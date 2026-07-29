@@ -69,28 +69,30 @@
   <section class="view" id="view-book" data-view="book">
     <div class="toolbar wrap">
       <label class="btn primary file-btn">
-        📚 Dosya seç (PDF / EPUB / TXT)
+        📚 Dosya seç
         <input type="file" id="book-file" accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain" hidden>
       </label>
       <button class="chip" id="btn-book-lib">🗂️ Kitaplığım</button>
-      <button class="chip" id="btn-font-minus">A−</button>
-      <button class="chip" id="btn-font-plus">A+</button>
+      <button class="chip" id="btn-reader-opts">Aa Görünüm</button>
       <button class="chip" id="btn-book-hardwords">✨ Zor kelimeler</button>
     </div>
 
     <div id="book-status" class="status"></div>
 
     <div class="book-nav" id="book-nav" hidden>
-      <button class="btn ghost" id="btn-prev-page">‹ Önceki</button>
+      <button class="nav-btn" id="btn-prev-page" title="Önceki">‹</button>
       <select id="book-chapter" class="select grow"></select>
-      <button class="btn ghost" id="btn-next-page">Sonraki ›</button>
+      <button class="nav-btn" id="btn-next-page" title="Sonraki">›</button>
     </div>
+    <div class="book-progress" id="book-progress" hidden><span></span></div>
 
-    <div id="book-content" class="book-content">
-      <div class="empty-state">
-        <div class="big">📖</div>
-        <p>Bir PDF, EPUB veya TXT dosyası yükle. Sonra metindeki <b>herhangi bir kelimeye dokun</b> — anlamını, eş anlamlılarını ve örnek cümlelerini göstereyim.</p>
-      </div>
+    <div class="paper-wrap">
+      <article id="book-content" class="book-content reader" lang="de" data-theme="sepia">
+        <div class="empty-state">
+          <div class="big">📖</div>
+          <p>Bir PDF, EPUB veya TXT dosyası yükle. Sonra metindeki <b>herhangi bir kelimeye dokun</b> — anlamını, eş anlamlılarını ve örnek cümlelerini göstereyim.</p>
+        </div>
+      </article>
     </div>
   </section>
 

@@ -13,6 +13,10 @@ const DEFAULTS = {
   autoscroll: true,
   fontSize: 19,
   autoSpeak: false,
+  readerTheme: 'sepia',   // sepia | light | dark
+  lineHeight: 1.78,
+  readerFont: 'serif',    // serif | sans
+  justify: true,
 };
 
 let settings = null;

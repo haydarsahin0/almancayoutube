@@ -13,6 +13,9 @@
   --radius:14px;
   --tap:44px;
   --reader-size:19px;
+  --reader-lh:1.78;
+  --reader-align:justify;
+  --reader-font:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Times New Roman",serif;
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
@@ -153,14 +156,110 @@ textarea{min-height:140px;line-height:1.5}
 .vcard .ttl{font-size:14px;line-height:1.35;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .vcard .sub{font-size:12px;color:var(--tx-dim)}
 
-/* ---------- kitap ---------- */
+/* ---------- kitap: üst çubuk ---------- */
 .book-nav{display:flex;gap:8px;align-items:center;padding:0 12px 8px}
-.book-content{padding:6px 16px 40px;font-size:var(--reader-size);line-height:1.85;max-width:760px;margin:0 auto}
-.book-content p{margin:0 0 1.05em}
-.book-content h1,.book-content h2,.book-content h3{line-height:1.35;margin:1.4em 0 .6em}
-.empty-state{text-align:center;color:var(--tx-dim);padding:40px 10px}
+.nav-btn{
+  background:var(--bg-2);border:1px solid var(--line);color:var(--tx);
+  border-radius:11px;min-width:42px;min-height:42px;font-size:20px;line-height:1;flex:none;
+}
+.nav-btn:active{background:var(--bg-3)}
+.nav-btn:disabled{opacity:.35}
+.book-progress{height:3px;background:var(--line);margin:0 12px 10px;border-radius:2px;overflow:hidden}
+.book-progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+
+/* ---------- kitap: kağıt ---------- */
+.paper-wrap{padding:0 10px calc(30px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+.book-content{
+  --paper:#f4ecdc; --paper-2:#efe5d1; --ink:#33291d; --ink-dim:#7d6d58;
+  --rule:#d8c9ab; --cap:#9a3b28; --mark:rgba(154,59,40,.16); --mark-line:rgba(154,59,40,.5);
+  width:100%;max-width:46em;min-height:min(78vh,860px);
+  background:var(--paper);
+  background-image:radial-gradient(120% 60% at 50% 0, var(--paper) 40%, var(--paper-2) 100%);
+  color:var(--ink);
+  border-radius:6px;
+  box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 14px 34px rgba(0,0,0,.45);
+  padding:26px clamp(18px, 5.5vw, 46px) 44px;
+  font-family:var(--reader-font, Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif);
+  font-size:var(--reader-size);
+  line-height:var(--reader-lh, 1.78);
+  hyphens:auto;-webkit-hyphens:auto;
+  text-rendering:optimizeLegibility;
+}
+.book-content[data-theme="light"]{
+  --paper:#fdfdfb; --paper-2:#f6f6f3; --ink:#1f1f1f; --ink-dim:#6d6d6d;
+  --rule:#e3e0d8; --cap:#8a5a1c; --mark:rgba(220,160,20,.22); --mark-line:rgba(180,120,10,.6);
+}
+.book-content[data-theme="dark"]{
+  --paper:#15181d; --paper-2:#12151a; --ink:#dde3ec; --ink-dim:#8a94a4;
+  --rule:#2b323d; --cap:#ffcc33; --mark:rgba(255,204,51,.18); --mark-line:rgba(255,204,51,.85);
+  box-shadow:0 0 0 1px var(--line), 0 14px 30px rgba(0,0,0,.5);
+}
+
+/* koşan başlık */
+.running-head{
+  display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-dim);border-bottom:1px solid var(--rule);
+  padding-bottom:8px;margin-bottom:26px;
+}
+.running-head .rh-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* metin */
+.book-content p{margin:0 0 .3em;text-indent:1.4em;text-align:var(--reader-align, justify)}
+.book-content h1+p,.book-content h2+p,.book-content h3+p,
+.book-content .running-head+p,.book-content blockquote+p{text-indent:0}
+.book-content p.chapter-open{text-indent:0;margin-top:.2em}
+.book-content p.chapter-open::first-letter{
+  float:left;font-size:3.05em;line-height:.82;
+  padding:.05em .1em 0 0;margin-top:.04em;
+  color:var(--cap);font-weight:600;
+}
+.book-content h1,.book-content h2{
+  text-align:center;font-size:1.06em;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;
+  margin:1.9em 0 .1em;line-height:1.5;color:var(--ink);
+}
+.book-content h1::after,.book-content h2::after{
+  content:"❦";display:block;color:var(--ink-dim);
+  font-size:.85em;letter-spacing:0;margin:.5em 0 1.1em;opacity:.65;
+}
+.book-content h3{
+  font-size:1em;font-weight:700;letter-spacing:.04em;
+  margin:1.6em 0 .5em;color:var(--ink);text-align:left;
+}
+.book-content li{margin:0 0 .4em 1.1em;text-indent:0}
+.book-content blockquote{
+  margin:1.2em 1.2em;padding-left:14px;border-left:2px solid var(--rule);
+  color:var(--ink-dim);font-style:italic;
+}
+.book-content blockquote p{text-indent:0}
+.book-content .w:active{background:var(--mark)}
+.book-content .w.saved{background:var(--mark);border-bottom:1px solid var(--mark-line)}
+
+/* sayfa sonu */
+.page-mark{
+  color:var(--ink-dim);font-size:12px;text-align:center;letter-spacing:.18em;
+  margin:34px 0 0;display:flex;align-items:center;gap:14px;text-indent:0;
+}
+.page-mark::before,.page-mark::after{content:"";flex:1;height:1px;background:var(--rule)}
+.chapter-end{display:flex;gap:10px;margin-top:26px}
+.chapter-end button{
+  flex:1;background:transparent;border:1px solid var(--rule);color:var(--ink-dim);
+  border-radius:10px;padding:11px 8px;font-size:13px;font-family:inherit;min-height:44px;
+}
+.chapter-end button:disabled{opacity:.35}
+
+/* görünüm ayarları */
+.opt-row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 18px}
+.opt{background:var(--bg-3);border:1px solid var(--line);color:var(--tx);border-radius:11px;padding:9px 14px;min-height:42px;font-size:13.5px}
+.opt.on{background:var(--accent);color:#1a1a1a;border-color:var(--accent);font-weight:700}
+.opt-label{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--tx-dim);margin-bottom:2px}
+.preview{border-radius:8px;padding:14px 16px;margin-top:6px;font-size:15px}
+
+.empty-state{text-align:center;color:var(--ink-dim);padding:40px 10px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-indent:0}
 .empty-state .big{font-size:46px;margin-bottom:10px}
-.page-mark{color:var(--tx-dim);font-size:12px;text-align:center;margin:22px 0;letter-spacing:1px}
+.empty-state p{text-indent:0;text-align:center}
 
 /* ---------- kelimelerim ---------- */
 .vocab-list{display:grid;gap:8px;padding:8px 12px 30px}

@@ -43,8 +43,13 @@ Bu adresi telefonunda tarayıcıda aç. **Paylaş → Ana ekrana ekle** dersen u
 > bir yere gönderilmez; istekler doğrudan cihazından `api.openai.com` adresine gider.
 > Anahtarı asla bu depoya veya bir mesaja yazma; sadece uygulamanın Ayarlar ekranına gir.
 
-Varsayılan model `gpt-4o-mini` (ucuz ve hızlı). Ayarlar'dan değiştirebilirsin.
-Seviyeni de (A1/A2/B1/B2) oradan seçersin; açıklamalar ona göre basitleşir.
+Model seçimi: Ayarlar'da **🔄 Modellerimi getir** düğmesine bas — hesabının erişebildiği
+sohbet modelleri **en yeniden eskiye** doğru listelenir, dokunup seçersin. OpenAI yeni bir sürüm
+çıkardığında (gpt-5.x gibi) listede kendiliğinden görünür; istersen model adını elle de yazabilirsin.
+Uygulama her modelin kabul ettiği parametreleri (ör. `max_completion_tokens`, sabit `temperature`)
+ilk istekte kendisi öğrenip hatırlar, düşünen modellerde yanıt bütçesini otomatik büyütür.
+
+Seviyeni de (A1/A2/B1/B2) Ayarlar'dan seçersin; açıklamalar ona göre basitleşir.
 
 ---
 
@@ -66,7 +71,13 @@ Seviyeni de (A1/A2/B1/B2) oradan seçersin; açıklamalar ona göre basitleşir.
 ### Kitap
 
 - **📚 Dosya seç** → PDF / EPUB / TXT yükle. Dosya cihazında saklanır (IndexedDB), kaldığın yer hatırlanır.
-- **A− / A+** ile yazı boyutunu değiştir, üstteki listeden bölüm/sayfa değiştir.
+- Metin gerçek bir kitap gibi dizilir: serif yazı tipi, iki yana yaslı satırlar, Almanca heceleme,
+  bölüm başında büyük harf (drop cap), ortalanmış bölüm başlıkları, üstte kitap adı ve sayfa numarası,
+  altta ilerleme çubuğu.
+- **Aa Görünüm** → tema (📜 Kağıt / ☀️ Açık / 🌙 Gece), yazı boyutu, yazı tipi (kitap/ekran),
+  satır aralığı ve hizalama. Seçimin hatırlanır.
+- Üstteki `‹ ›` düğmeleri ve açılır listeyle bölüm/sayfa değiştirirsin; her bölümün sonunda da
+  "Önceki / Sonraki" düğmeleri vardır.
 - Metindeki kelimeye dokun → aynı açıklama paneli.
 - **🗂️ Kitaplığım** → daha önce yüklediğin dosyalar.
 

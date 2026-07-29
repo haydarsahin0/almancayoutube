@@ -5,61 +5,115 @@ export class AIError extends Error {
   constructor(msg, kind = 'other') { super(msg); this.kind = kind; }
 }
 
-async function chat(messages, { json = true, maxTokens = 1100, temperature = 0.2 } = {}) {
+/* Her modelin kabul ettiği parametreler farklı (yeni nesil modeller max_tokens
+   yerine max_completion_tokens istiyor, sabit temperature kullanıyor vb.).
+   Öğrendiklerimizi model başına hatırlayıp bir daha aynı hatayı yapmıyoruz. */
+const compatKey = (m) => 'dl.compat.' + m;
+function getCompat(model) {
+  try { return JSON.parse(localStorage.getItem(compatKey(model)) || '{}'); } catch { return {}; }
+}
+function setCompat(model, patch) {
+  const next = { ...getCompat(model), ...patch };
+  localStorage.setItem(compatKey(model), JSON.stringify(next));
+  return next;
+}
+
+function apiBase() {
+  return (getSettings().baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
+}
+
+async function post(path, payload) {
   const s = getSettings();
-  if (!s.apiKey) throw new AIError('Önce Ayarlar\'dan OpenAI API anahtarını gir.', 'nokey');
-
-  const base = (s.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
-  const body = {
-    model: s.model || 'gpt-4o-mini',
-    messages,
-    max_tokens: maxTokens,
-  };
-  if (json) body.response_format = { type: 'json_object' };
-  if (temperature !== null) body.temperature = temperature;
-
-  const send = async (payload) => {
-    const r = await fetch(base + '/chat/completions', {
+  let r;
+  try {
+    r = await fetch(apiBase() + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.apiKey },
       body: JSON.stringify(payload),
     });
-    const text = await r.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch { /* düz metin hata olabilir */ }
-    if (!r.ok) {
-      const msg = data?.error?.message || text.slice(0, 300);
-      const err = new AIError(msg, r.status === 401 ? 'auth' : r.status === 429 ? 'limit' : 'http');
-      err.status = r.status; err.raw = msg;
-      throw err;
-    }
-    return data;
+  } catch (e) {
+    throw new AIError('İnternete ulaşılamadı: ' + e.message, 'net');
+  }
+  const text = await r.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch { /* düz metin hata olabilir */ }
+  if (!r.ok) {
+    const msg = data?.error?.message || text.slice(0, 300);
+    const err = new AIError(msg, r.status === 401 ? 'auth' : r.status === 429 ? 'limit'
+      : r.status === 404 ? 'model' : 'http');
+    err.status = r.status; err.raw = msg; err.code = data?.error?.code || '';
+    err.param = data?.error?.param || '';
+    throw err;
+  }
+  return data;
+}
+
+async function chat(messages, { json = true, maxTokens = 1100, temperature = 0.2 } = {}) {
+  const s = getSettings();
+  if (!s.apiKey) throw new AIError('Önce Ayarlar\'dan OpenAI API anahtarını gir.', 'nokey');
+  const model = s.model || 'gpt-4o-mini';
+  let c = getCompat(model);
+  let budget = Math.max(maxTokens, c.minTokens || 0);
+
+  const build = () => {
+    const p = { model, messages };
+    p[c.tokenParam || 'max_tokens'] = budget;
+    if (json && !c.noJson) p.response_format = { type: 'json_object' };
+    if (temperature !== null && !c.noTemp) p.temperature = temperature;
+    return p;
   };
 
-  let data;
-  try {
-    data = await send(body);
-  } catch (e) {
-    // Bazı modeller temperature / response_format / max_tokens parametrelerini reddediyor → sadeleştirip tekrar dene
-    if (e instanceof AIError && (e.status === 400 || e.status === 404)) {
-      const retry = { model: body.model, messages };
-      if (/max_tokens/i.test(e.raw || '')) retry.max_completion_tokens = maxTokens;
-      try {
-        data = await send(retry);
-      } catch (e2) {
-        if (e2 instanceof AIError) throw e2;
-        throw new AIError('Bağlantı hatası: ' + e2.message, 'net');
+  let data = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      data = await post('/chat/completions', build());
+    } catch (e) {
+      if (!(e instanceof AIError) || e.status !== 400) throw e;
+      const m = (e.raw || '') + ' ' + (e.param || '');
+      // hangi parametreyi beğenmediğini anlayıp onu bırakıp tekrar deniyoruz
+      if (/max_completion_tokens/i.test(m) && (c.tokenParam || 'max_tokens') === 'max_tokens') {
+        c = setCompat(model, { tokenParam: 'max_completion_tokens' }); continue;
       }
-    } else if (e instanceof AIError) {
+      if (/max_tokens/i.test(m) && c.tokenParam === 'max_completion_tokens') {
+        c = setCompat(model, { tokenParam: 'max_tokens' }); continue;
+      }
+      if (/temperature/i.test(m) && !c.noTemp) { c = setCompat(model, { noTemp: true }); continue; }
+      if (/response_format|json_object|json_schema/i.test(m) && !c.noJson) {
+        c = setCompat(model, { noJson: true }); continue;
+      }
       throw e;
-    } else {
-      throw new AIError('İnternet/CORS hatası: ' + e.message, 'net');
     }
-  }
 
-  const content = data?.choices?.[0]?.message?.content || '';
-  if (!content) throw new AIError('Model boş yanıt verdi.', 'empty');
-  return content;
+    const choice = data?.choices?.[0];
+    const content = choice?.message?.content || '';
+    if (content.trim()) return content;
+
+    // Düşünen modellerde bütçe akıl yürütmeye gidip yanıt boş kalabilir → bütçeyi büyüt
+    if (choice?.finish_reason === 'length' && budget < 8000) {
+      budget = Math.min(8000, budget * 3);
+      setCompat(model, { minTokens: budget });
+      continue;
+    }
+    throw new AIError('Model boş yanıt verdi. Ayarlar\'dan başka bir model dene.', 'empty');
+  }
+  throw new AIError('Model bu isteği kabul etmedi. Ayarlar\'dan başka bir model dene.', 'http');
+}
+
+/** Hesabın erişebildiği sohbet modellerini yeniden eskiye doğru listeler */
+export async function listModels() {
+  const s = getSettings();
+  if (!s.apiKey) throw new AIError('Önce API anahtarını gir.', 'nokey');
+  let r;
+  try {
+    r = await fetch(apiBase() + '/models', { headers: { Authorization: 'Bearer ' + s.apiKey } });
+  } catch (e) { throw new AIError('İnternete ulaşılamadı: ' + e.message, 'net'); }
+  const data = await r.json().catch(() => null);
+  if (!r.ok) throw new AIError(data?.error?.message || ('HTTP ' + r.status), r.status === 401 ? 'auth' : 'http');
+  const skip = /embed|tts|whisper|dall-e|audio|realtime|image|moderation|transcribe|speech|search|instruct|davinci|babbage|computer-use/i;
+  return (data?.data || [])
+    .filter(m => /^(gpt|o\d|chatgpt)/i.test(m.id) && !skip.test(m.id))
+    .sort((a, b) => (b.created || 0) - (a.created || 0))
+    .map(m => m.id);
 }
 
 function parseJSON(txt) {

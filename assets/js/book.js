@@ -147,35 +147,80 @@ async function parseEpub(arrayBuffer, onProgress) {
 /* ---------------------------------- TXT ---------------------------------- */
 function parseTxt(text) {
   const paras = text.replace(/\r/g, '').split(/\n\s*\n/).map(p => p.replace(/\n/g, ' ').trim()).filter(Boolean);
+  // kısa, noktalama ile bitmeyen satırlar başlıktır (Kapitel 1, bölüm adları…)
+  const isHeading = (t) => t.length <= 70 && !/[.!?:;,»"']$/.test(t) && t.split(' ').length <= 9;
+  const blocks = paras.map(t => ({ tag: isHeading(t) ? 'h2' : 'p', text: t }));
+
   const chapters = [];
-  const PER = 40;
-  for (let i = 0; i < paras.length; i += PER) {
-    chapters.push({
-      title: `Bölüm ${chapters.length + 1}`,
-      blocks: paras.slice(i, i + PER).map(t => ({ tag: 'p', text: t })),
-    });
+  let cur = null;
+  const push = (title) => { cur = { title: title || `Bölüm ${chapters.length + 1}`, blocks: [] }; chapters.push(cur); };
+  for (const b of blocks) {
+    const long = cur && cur.blocks.length >= 12;
+    if (!cur || (b.tag === 'h2' && long) || cur.blocks.length >= 45) push(b.tag === 'h2' ? b.text : '');
+    cur.blocks.push(b);
+    if (cur.blocks.length === 1 && b.tag === 'h2') cur.title = b.text;
   }
   return chapters.length ? chapters : [{ title: 'Metin', blocks: [{ tag: 'p', text }] }];
 }
 
 /* -------------------------------- gösterim -------------------------------- */
+const SERIF = 'Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Times New Roman",serif';
+const SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif';
+
+export function applyReaderStyle() {
+  const s = getSettings();
+  const r = document.documentElement.style;
+  r.setProperty('--reader-size', s.fontSize + 'px');
+  r.setProperty('--reader-lh', String(s.lineHeight || 1.78));
+  r.setProperty('--reader-align', s.justify ? 'justify' : 'left');
+  r.setProperty('--reader-font', s.readerFont === 'sans' ? SANS : SERIF);
+  const box = $('#book-content');
+  if (box) box.dataset.theme = s.readerTheme || 'sepia';
+}
+
+function updateProgress() {
+  const bar = $('#book-progress');
+  if (!book) { bar.hidden = true; return; }
+  bar.hidden = false;
+  const box = $('#book-content');
+  const h = Math.max(1, box.scrollHeight - window.innerHeight);
+  const within = Math.min(1, Math.max(0, (window.scrollY - box.offsetTop + 120) / h));
+  const pct = ((chapter + within) / book.chapters.length) * 100;
+  bar.firstElementChild.style.width = Math.min(100, Math.max(0.5, pct)).toFixed(1) + '%';
+}
+
 function renderChapter(idx, scrollTo = 0) {
   if (!book) return;
   chapter = Math.max(0, Math.min(idx, book.chapters.length - 1));
   const ch = book.chapters[chapter];
   const box = $('#book-content');
   const known = vocabKeys();
-  const nodes = ch.blocks.map(b => {
+
+  const nodes = [el('div', { class: 'running-head' },
+    el('span', { class: 'rh-t' }, book.name.replace(/\.(pdf|epub|txt)$/i, '')),
+    el('span', {}, `${chapter + 1} / ${book.chapters.length}`))];
+
+  let firstPara = true;
+  for (const b of ch.blocks) {
     const n = el(b.tag === 'p' ? 'p' : b.tag);
+    if (b.tag === 'p' && firstPara && b.text.length > 60) { n.className = 'chapter-open'; firstPara = false; }
     n.append(wordSpans(b.text));
     for (const w of n.querySelectorAll('.w')) if (known.has(normWord(w.textContent))) w.classList.add('saved');
-    return n;
-  });
-  nodes.push(el('div', { class: 'page-mark' }, `— ${ch.title} (${chapter + 1}/${book.chapters.length}) —`));
+    nodes.push(n);
+  }
+
+  nodes.push(el('div', { class: 'page-mark' }, ch.title));
+  nodes.push(el('div', { class: 'chapter-end' },
+    el('button', { disabled: chapter === 0 || null, onclick: () => renderChapter(chapter - 1) }, '‹ Önceki'),
+    el('button', { disabled: chapter >= book.chapters.length - 1 || null, onclick: () => renderChapter(chapter + 1) }, 'Sonraki ›')));
+
   box.replaceChildren(...nodes);
   $('#book-chapter').value = String(chapter);
+  $('#btn-prev-page').disabled = chapter === 0;
+  $('#btn-next-page').disabled = chapter >= book.chapters.length - 1;
   window.scrollTo({ top: scrollTo || 0, behavior: 'auto' });
   book.pos = { chapter, scroll: 0 };
+  updateProgress();
   savePos();
 }
 
@@ -265,9 +310,52 @@ async function libraryDialog() {
   ));
 }
 
+/* ---------------------------- görünüm ayarları ---------------------------- */
+function readerOptionsDialog() {
+  const s = () => getSettings();
+  const wrap = el('div', {});
+
+  const group = (label, ...kids) => el('div', {},
+    el('div', { class: 'opt-label' }, label), el('div', { class: 'opt-row' }, ...kids));
+
+  const mk = (text, isOn, onPick) => {
+    const b = el('button', { class: 'opt' + (isOn() ? ' on' : '') }, text);
+    b.addEventListener('click', () => {
+      onPick();
+      applyReaderStyle();
+      wrap.querySelectorAll('.opt').forEach(x => x.dispatchEvent(new CustomEvent('refresh')));
+      if (book) renderChapter(chapter, window.scrollY);
+    });
+    b.addEventListener('refresh', () => b.classList.toggle('on', isOn()));
+    return b;
+  };
+
+  wrap.append(
+    group('Tema',
+      mk('📜 Kağıt', () => s().readerTheme === 'sepia', () => setSettings({ readerTheme: 'sepia' })),
+      mk('☀️ Açık', () => s().readerTheme === 'light', () => setSettings({ readerTheme: 'light' })),
+      mk('🌙 Gece', () => s().readerTheme === 'dark', () => setSettings({ readerTheme: 'dark' }))),
+    group('Yazı boyutu',
+      el('button', { class: 'opt', onclick: () => { setSettings({ fontSize: Math.max(15, s().fontSize - 1) }); applyReaderStyle(); } }, 'A−'),
+      el('button', { class: 'opt', onclick: () => { setSettings({ fontSize: Math.min(30, s().fontSize + 1) }); applyReaderStyle(); } }, 'A+')),
+    group('Yazı tipi',
+      mk('Kitap (serif)', () => s().readerFont === 'serif', () => setSettings({ readerFont: 'serif' })),
+      mk('Ekran (sans)', () => s().readerFont === 'sans', () => setSettings({ readerFont: 'sans' }))),
+    group('Satır aralığı',
+      mk('Sık', () => s().lineHeight <= 1.6, () => setSettings({ lineHeight: 1.6 })),
+      mk('Normal', () => s().lineHeight > 1.6 && s().lineHeight < 2, () => setSettings({ lineHeight: 1.78 })),
+      mk('Geniş', () => s().lineHeight >= 2, () => setSettings({ lineHeight: 2.05 }))),
+    group('Hizalama',
+      mk('İki yana yasla', () => !!s().justify, () => setSettings({ justify: true })),
+      mk('Sola yasla', () => !s().justify, () => setSettings({ justify: false }))),
+    el('button', { class: 'btn primary', style: 'width:100%;margin-top:4px', onclick: closeModal }, 'Tamam'),
+  );
+  showModal('Okuma görünümü', wrap);
+}
+
 /* -------------------------------- kurulum --------------------------------- */
 export function initBook() {
-  document.documentElement.style.setProperty('--reader-size', getSettings().fontSize + 'px');
+  applyReaderStyle();
 
   $('#book-file').addEventListener('change', (e) => {
     const f = e.target.files?.[0];
@@ -281,16 +369,12 @@ export function initBook() {
     if (!book) return toast('Önce bir kitap aç.');
     showHardWords(book.chapters[chapter].blocks.map(b => b.text).join(' '), 'kitap: ' + book.name);
   });
-  const setFont = (d) => {
-    const s = Math.max(14, Math.min(30, getSettings().fontSize + d));
-    setSettings({ fontSize: s });
-    document.documentElement.style.setProperty('--reader-size', s + 'px');
-  };
-  $('#btn-font-plus').addEventListener('click', () => setFont(1));
-  $('#btn-font-minus').addEventListener('click', () => setFont(-1));
+  $('#btn-reader-opts').addEventListener('click', readerOptionsDialog);
 
   attachWordTaps($('#book-content'), contextOf, 'kitap');
-  window.addEventListener('scroll', () => { if (book && $('#view-book').classList.contains('active')) savePos(); }, { passive: true });
+  window.addEventListener('scroll', () => {
+    if (book && $('#view-book').classList.contains('active')) { savePos(); updateProgress(); }
+  }, { passive: true });
 
   // son okunan kitabı hatırlat
   listBooks().then(bs => {

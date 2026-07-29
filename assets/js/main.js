@@ -1,6 +1,7 @@
 // Uygulama girişi: sekmeler, ayarlar, ilk kurulum
 import { $, $$, el, toast } from './util.js';
 import { getSettings, setSettings } from './store.js';
+import { listModels } from './ai.js';
 import { initModal, showModal, closeModal } from './ui.js';
 import { initWordSheet } from './word.js';
 import { initVideo, pauseVideo } from './video.js';
@@ -26,6 +27,36 @@ function settingsDialog() {
   const autoSpeak = el('input', { type: 'checkbox', checked: s.autoSpeak || null });
   const baseUrl = el('input', { type: 'text', value: s.baseUrl, placeholder: 'https://api.openai.com/v1' });
 
+  // hesaptaki modelleri canlı listele
+  const modelBox = el('div', { class: 'chips', style: 'width:100%;padding:0' });
+  const pickModel = (id) => {
+    model.value = id;
+    modelBox.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.textContent === id));
+  };
+  const showModels = (ids) => {
+    modelBox.replaceChildren(...ids.slice(0, 40).map(id =>
+      el('button', { class: 'chip' + (id === model.value ? ' on' : ''), onclick: () => pickModel(id) }, id)));
+    if (!ids.length) modelBox.append(el('p', { class: 'hint' }, 'Sohbet modeli bulunamadı.'));
+  };
+  const fetchBtn = el('button', { class: 'chip' }, '🔄 Modellerimi getir');
+  fetchBtn.addEventListener('click', async () => {
+    setSettings({ apiKey: key.value.trim(), baseUrl: baseUrl.value.trim() || 'https://api.openai.com/v1' });
+    fetchBtn.disabled = true; fetchBtn.textContent = 'Getiriliyor…';
+    try {
+      const ids = await listModels();
+      localStorage.setItem('dl.models', JSON.stringify(ids));
+      showModels(ids);
+      fetchBtn.textContent = `🔄 Yenile (${ids.length})`;
+    } catch (e) {
+      modelBox.replaceChildren(el('p', { class: 'hint', style: 'color:#ff9b9b' }, e.message));
+      fetchBtn.textContent = '🔄 Tekrar dene';
+    } finally { fetchBtn.disabled = false; }
+  });
+  try {
+    const cached = JSON.parse(localStorage.getItem('dl.models') || '[]');
+    if (cached.length) showModels(cached);
+  } catch { /* yoksay */ }
+
   const body = el('div', {},
     el('div', { class: 'form-group' },
       el('label', {}, 'OpenAI API anahtarı'),
@@ -36,10 +67,9 @@ function settingsDialog() {
     el('div', { class: 'form-group' },
       el('label', {}, 'Model'),
       model,
-      el('div', { class: 'chips', style: 'padding-top:8px' },
-        ...['gpt-4o-mini', 'gpt-4.1-mini', 'gpt-4o'].map(m =>
-          el('button', { class: 'chip', onclick: () => { model.value = m; } }, m))),
-      el('p', { class: 'hint' }, 'gpt-4o-mini ucuz ve hızlıdır, günlük kullanım için yeterli.')),
+      el('div', { class: 'chips', style: 'padding-top:8px' }, fetchBtn, modelBox),
+      el('p', { class: 'hint' }, 'Düğmeye basınca hesabının erişebildiği modeller en yeniden eskiye doğru listelenir; ' +
+        'hangi sürümler açıldıysa (gpt-5.x gibi) burada görünür. İstersen kutuya elle de yazabilirsin.')),
     el('div', { class: 'form-group' },
       el('label', {}, 'Almanca seviyen'), level,
       el('p', { class: 'hint' }, 'Açıklamalar bu seviyeye göre basitleştirilir.')),
