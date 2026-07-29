@@ -58,11 +58,20 @@ async function parsePdf(data, onProgress) {
     const blocks = [];
     let para = '';
     let prevY = null, prevH = 12;
+    const hs = lines.map(l => l.h).sort((a, b) => a - b);
+    const med = hs[Math.floor(hs.length / 2)] || 12;
     for (const ln of lines) {
       const text = ln.parts.join('').replace(/\s+/g, ' ').trim();
       if (!text) continue;
+      // büyük puntolu kısa satırlar = başlık
+      if (ln.h >= med * 1.22 && text.length < 90) {
+        if (para.trim()) { blocks.push({ tag: 'p', text: para.trim() }); para = ''; }
+        blocks.push({ tag: 'h3', text });
+        prevY = ln.y; prevH = ln.h;
+        continue;
+      }
       const gap = prevY === null ? 0 : prevY - ln.y;
-      const newPara = prevY !== null && (gap > prevH * 1.75 || gap < 0);
+      const newPara = prevY !== null && (gap > prevH * 1.75 || gap < 0 || Math.abs(ln.h - prevH) > med * 0.3);
       if (newPara && para) { blocks.push({ tag: 'p', text: para.trim() }); para = ''; }
       if (/-$/.test(para)) para = para.slice(0, -1) + text;      // satır sonu tirelemesi
       else para = para ? para + ' ' + text : text;

@@ -123,9 +123,11 @@ textarea{min-height:140px;line-height:1.5}
 }
 .cue+.cue{margin-top:2px}
 .cue .t{
+  background:transparent;border:0;
   color:var(--tx-dim);font-size:12px;font-variant-numeric:tabular-nums;
-  padding-top:3px;min-width:44px;text-align:right;flex:none;
+  padding:3px 4px 0 0;min-width:46px;text-align:right;flex:none;
 }
+.cue .t:active{color:var(--accent)}
 .cue .tx{flex:1;font-size:17px;line-height:1.7}
 .cue.active{background:var(--bg-3)}
 .cue.active .tx{color:#fff}
