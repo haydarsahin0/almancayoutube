@@ -142,14 +142,15 @@ function render(d, word, context, source) {
 
     // ---- eş anlamlılar, seviyeye göre ----
     d.synonyme?.length ? card('🔁', 'Yerine kullanabileceklerin',
-      el('div', { class: 'syn-list' }, ...sortByLevel(d.synonyme).map(s =>
+      el('div', { class: 'syn-list' }, ...d.synonyme.map(s =>
         el('button', { class: 'syn-row', onclick: () => openWord(s.wort, context, source) },
           levelBadge(s.niveau, 'sm') || el('span', { class: 'cefr sm ghost' }, '–'),
           el('span', { class: 'syn-main' },
-            el('b', {}, s.wort),
+            el('b', {}, s.wort,
+              s.im_satz === true && context ? el('span', { class: 'fits', title: 'Bu cümlede de kullanabilirsin' }, '✓ bu cümlede') : null),
             el('small', {}, [s.tr, s.hinweis].filter(Boolean).join(' — '))),
           el('span', { class: 'syn-go' }, '›')))),
-      null, 'Basitten ileriye doğru sıralı — kendi seviyene uygun olanı seç.',
+      null, 'En doğal karşılıktan başlayarak sıralı; yanındaki rozet o kelimenin kendi seviyesi.',
     ) : null,
 
     // ---- kelime ailesi ----
@@ -207,14 +208,10 @@ function updateSaved(d, lemma, artikel, source, context) {
     tr: (d.anlam_tr || []).join(', '),
     de: d.erklaerung_de || '',
     example: d.beispiele?.[0] ? `${d.beispiele[0].de} — ${d.beispiele[0].tr}` : '',
-    syn: (d.synonyme || []).map(s => ({ wort: s.wort, tr: s.tr || '', niveau: s.niveau || '' })),
+    syn: (d.synonyme || []).map(s => ({ wort: s.wort, tr: s.tr || '', niveau: s.niveau || '', hinweis: s.hinweis || '' })),
     source, context,
   });
 }
-
-const LEVEL_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-const sortByLevel = (list) => [...list].sort((a, b) =>
-  (LEVEL_ORDER[String(a.niveau).toUpperCase()] || 9) - (LEVEL_ORDER[String(b.niveau).toUpperCase()] || 9));
 
 /** Başlıklı içerik kartı */
 function card(icon, title, content, aside = null, foot = null) {

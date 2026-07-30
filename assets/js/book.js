@@ -211,7 +211,25 @@ function showPage(i, animate = true) {
   flow.style.transform = `translateX(${-page * pageW}px)`;
   if (!animate) requestAnimationFrame(() => flow.classList.remove('no-anim'));
   updateChrome();
+  markProgress();
   savePos();
+}
+
+/* İstatistikte sayfa sayacı: yalnızca kitapta İLK KEZ ulaşılan bir sonraki sayfa
+   sayılır. Geri gidip tekrar ileri gitmek ya da bölüm atlamak sayaca yazılmaz. */
+function markProgress() {
+  if (!book) return;
+  const hw = book.maxPos;
+  if (!hw) {                                   // kitap ilk kez açıldı
+    book.maxPos = { chapter, page };
+    bumpStat('pages');
+    return;
+  }
+  const oneStep = (chapter === hw.chapter && page === hw.page + 1)
+    || (chapter === hw.chapter + 1 && page === 0);
+  const ahead = chapter > hw.chapter || (chapter === hw.chapter && page > hw.page);
+  if (oneStep) { book.maxPos = { chapter, page }; bumpStat('pages'); }
+  else if (ahead) { book.maxPos = { chapter, page }; }   // atlama: işaretle ama sayma
 }
 
 function updateChrome() {
@@ -230,8 +248,8 @@ function updateChrome() {
 export function nextPage() {
   if (!book) return;
   wantPage = null;
-  if (page < pages - 1) { bumpStat('pages'); return showPage(page + 1); }
-  if (chapter < book.chapters.length - 1) { bumpStat('pages'); return renderChapter(chapter + 1, 0); }
+  if (page < pages - 1) return showPage(page + 1);
+  if (chapter < book.chapters.length - 1) return renderChapter(chapter + 1, 0);
   toast('Kitabın sonu 🎉');
 }
 export function prevPage() {
@@ -297,7 +315,7 @@ function savePos() {
   if (!book) return;
   clearTimeout(saveT);
   saveT = setTimeout(() => {
-    putBook({ ...book, pos: { chapter, page }, opened: Date.now() }).catch(() => {});
+    putBook({ ...book, pos: { chapter, page }, maxPos: book.maxPos, opened: Date.now() }).catch(() => {});
   }, 500);
 }
 

@@ -8,9 +8,10 @@ Metindeki **herhangi bir kelimeye dokunduğunda** yapay zeka o kelimeyi sana ö�
 - Kelimenin **seviyesi** (A1…C2 rozeti) ve günlük Almancada ne sıklıkta geçtiği
 - Kelimenin **basit Almanca açıklaması** (seviyene göre — `Das Wetter sagt, ob es warm oder kalt ist.`)
 - **Türkçe karşılıkları** ve o cümledeki anlamı
-- **Her seviyeden eş anlamlılar**: aynı anlama gelen kelimeler A1'den C1'e doğru sıralı
-  (`laufen` → `gehen` A1 · `rennen` A2 · `joggen` B1 · `sich fortbewegen` C1), her birinin
-  Türkçesi ve kullanım farkıyla — kendi seviyene uygun olanı seçebilirsin
+- **Gerçekten yerine geçen eş anlamlılar**: anadili Almanca olan birinin aynı cümlede
+  söyleyebileceği kelimeler, en doğal olandan başlayarak sıralı. Her birinin yanında
+  **kendi seviyesi** (A1…C2), Türkçesi ve kullanım farkı; okuduğun cümleye de oturanlar
+  "✓ bu cümlede" rozetiyle işaretli. Anlamı yakın ama yerine geçmeyen kelimeler yazılmaz
 - **Kelime ailesi**: aynı kökten türeyen kelimeler (`laufen` → `der Lauf`, `der Läufer`,
   `weglaufen`, `die Laufbahn`), her biri Türkçesi ve seviyesiyle — dokununca o kelime de açılır
 - Zıt anlamlılar
@@ -99,7 +100,15 @@ altta ilerleme çubuğu.
 - **Son 14 gün** çubuk grafiği — sayfa / dakika / kelime arasında geçiş yapabilirsin.
 - **Kelime ustalığı** dağılımı: kaç kelime hangi seviyede.
 - Toplamlar: kitap, sayfa, okuma süresi, sorulan kelime, kelime defteri, tekrar, en uzun seri.
-- Okuma süresi yalnızca kitap ekranı açıkken ve son 2,5 dakikada ekrana dokunmuşsan sayılır.
+
+Sayaçların nasıl çalıştığı:
+
+- **Sayfa**: yalnızca kitapta **ilk kez ulaştığın** bir sonraki sayfa sayılır. Geri gidip
+  tekrar ileri gitmek, bölüm atlamak veya okuduğun yeri yeniden okumak sayaca yazılmaz.
+- **Okuma süresi**: yalnızca kitap ekranı açıkken, uygulama önplandayken ve son 1,5 dakikada
+  ekrana dokunmuşken işler. Geçen gerçek süre ölçülür (tik başına en fazla 15 sn yazılır),
+  böylece telefon uykuya geçse ya da tarayıcı zamanlayıcıyı yavaşlatsa da sayaç şişmez.
+  Tekrar çalışması sırasında geçen süre okuma süresine yazılmaz.
 
 ---
 

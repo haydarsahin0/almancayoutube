@@ -141,7 +141,7 @@ const WORD_SCHEMA = `{
   "erklaerung_de": "Kelimenin anlamının BASİT ALMANCA açıklaması (1-2 kısa cümle)",
   "anlam_tr": ["en yaygın Türkçe karşılıklar, 1-4 tane"],
   "baglam_tr": "Bu cümlede tam olarak ne anlama geldiği — TÜRKÇE, tek cümle",
-  "synonyme": [{"wort":"Almanca eş anlamlı", "tr":"Türkçesi", "niveau":"A1…C2", "hinweis":"kullanım farkı — TÜRKÇE, kısa"}],
+  "synonyme": [{"wort":"gerçekten bu kelimenin yerine kullanılabilen Almanca kelime/kalıp", "tr":"Türkçesi", "niveau":"BU KELİMENİN kendi seviyesi: A1…C2", "im_satz": true, "hinweis":"anlam/kullanım farkı — TÜRKÇE, kısa"}],
   "gegenteil": [{"wort":"Almanca zıt anlamlı", "tr":"Türkçesi"}],
   "beispiele": [{"de":"basit Almanca örnek cümle", "tr":"Türkçe çevirisi"}],
   "verb_info": {"praesens_er":"er/sie/es çekimi", "praeteritum":"", "perfekt":"haben/sein + partizip", "trennbar": true, "kasus":"aldığı hal/edat (varsa)"},
@@ -151,8 +151,8 @@ const WORD_SCHEMA = `{
 export async function lookupWord(word, context = '', { force = false } = {}) {
   const s = getSettings();
   const ctx = (context || '').slice(0, 400);
-  // v3: eş anlamlılara seviye alanı eklendi — eski önbellek girdileri kullanılmasın
-  const key = `w3:${s.model}:${s.level}:${word}:${ctx}`;
+  // v4: eş anlamlı ölçütü değişti (gerçek değiştirilebilirlik) — eski önbellek geçersiz
+  const key = `w4:${s.model}:${s.level}:${word}:${ctx}`;
   if (!force) {
     const c = cacheGet(key);
     if (c) return { ...c, _cached: true };
@@ -169,10 +169,16 @@ Kurallar:
 - "wortfamilie" alanına AYNI KÖKTEN türeyen 3-6 kelime yaz: fiilin isim hâli, isimden türeyen
   sıfat, ön ekli fiiller (an-, auf-, aus-, ver-, be-…), yaygın bileşik isimler.
   Sadece gerçekten aynı kökten gelenleri yaz; yoksa listeyi boş bırak. İsimleri artikelle yaz.
-- "synonyme" alanına Almanların bu kelimenin yerine gerçekten kullandığı 3-5 kelime yaz ve
-  bunları FARKLI SEVİYELERDEN seç: mümkünse en az bir tane basit/günlük (A1-A2), bir tane orta (B1),
-  bir tane daha ileri veya resmi (B2-C1). Her biri için "niveau" alanını doldur.
-  Aynı seviyeden birden fazla yazma; o seviyede uygun kelime yoksa o seviyeyi atla.
+- "synonyme" alanının TEK ÖLÇÜTÜ gerçek değiştirilebilirliktir: anadili Almanca olan biri
+  aynı cümlede bu kelimenin yerine o kelimeyi söyleyebilmeli ve cümlenin anlamı değişmemeli.
+  * Seviye dağılımı KOVALAMA. Kolay bir eş anlamlı yoksa uydurma; liste kısa olsun, hatta boş kalsın.
+  * Anlamı yakın ama yerine geçmeyen kelimeleri YAZMA: üst/alt kavramlar (laufen→gehen),
+    çağrışımlar, aynı konudan kelimeler eş anlamlı DEĞİLDİR. Onların yeri "wortfamilie" alanıdır.
+  * En doğal, en sık kullanılan karşılıktan başlayarak sırala. En fazla 5 tane yaz.
+  * "niveau" alanına o EŞ ANLAMLI KELİMENİN kendi seviyesini yaz (öğrencinin ya da asıl kelimenin değil).
+  * "im_satz": verilen cümleye de olduğu gibi oturuyorsa true, sadece başka bağlamlarda
+    yerine geçiyorsa false.
+  * "hinweis" alanında farkı yaz (ör. "daha resmi", "sadece nesnelerde kullanılır", "konuşma dili").
 - "beispiele" alanına 2-3 örnek cümle yaz; biri mümkünse verilen bağlama benzesin.
 - Kelime fiil değilse "verb_info" null olsun.
 - Kelime bir ayrılabilir fiilin parçası ya da deyim ise bunu "form_erklaerung" içinde belirt.`;

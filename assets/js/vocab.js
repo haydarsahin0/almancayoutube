@@ -104,7 +104,7 @@ function draw() {
     v.example ? el('div', { class: 'ex-small' }, v.example) : null,
     v.syn?.length ? el('div', { class: 'syn-mini' },
       el('span', { class: 'syn-mini-h' }, 'yerine:'),
-      ...sortSyn(v.syn).slice(0, 3).map(sy =>
+      ...(v.syn || []).slice(0, 3).map(sy =>
         el('span', { class: 'syn-pill' }, levelBadge(sy.niveau, 'sm'), sy.wort))) : null,
   );
   const tapHint = el('div', { class: 'tap-hint' + (revealed ? ' off' : '') }, '👆 anlamı görmek için dokun');
@@ -156,10 +156,6 @@ function answerButtons(v) {
 }
 
 /* --------------------------- eş anlamlı turu ------------------------------ */
-const LEVEL_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-const sortSyn = (list) => [...(list || [])].sort((a, b) =>
-  (LEVEL_ORDER[String(a.niveau).toUpperCase()] || 9) - (LEVEL_ORDER[String(b.niveau).toUpperCase()] || 9));
-
 const withSyn = () => allVocab().filter(v => Array.isArray(v.syn) && v.syn.length);
 
 let synQueue = [], synIdx = 0, synOpen = false;
@@ -196,9 +192,11 @@ function drawSyn() {
   $('#study-prog-bar').style.width = `${(synIdx / synQueue.length) * 100}%`;
 
   const list = el('div', { class: 'reveal syn-reveal' },
-    ...sortSyn(v.syn).map(sy => el('div', { class: 'syn-line' },
+    ...(v.syn || []).map(sy => el('div', { class: 'syn-line' },
       levelBadge(sy.niveau, 'sm') || el('span', { class: 'cefr sm ghost' }, '–'),
-      el('span', {}, el('b', {}, sy.wort), sy.tr ? el('small', {}, ' — ' + sy.tr) : null),
+      el('span', {}, el('b', {}, sy.wort),
+        sy.tr ? el('small', {}, ' — ' + sy.tr) : null,
+        sy.hinweis ? el('small', { style: 'display:block;opacity:.75' }, sy.hinweis) : null),
       el('button', { class: 'mini', onclick: (e) => { e.stopPropagation(); speak(sy.wort); } }, '🔊'))));
   const hint = el('div', { class: 'tap-hint' }, '👆 cevabı görmek için dokun');
   const reveal = () => {

@@ -7,20 +7,38 @@ const BAR_HUE = '#dfb52f';          // tek seri — sıralı tek renk (koyu yüz
 const DAY = 86400000;
 
 /* ----------------------------- okuma süresi ------------------------------ */
+/* Süre, tik aralığına değil gerçek geçen zamana göre işlenir; böylece tarayıcı
+   zamanlayıcıyı yavaşlatsa da (arka plan, pil tasarrufu) sayaç şişmez.        */
+const TICK = 10000;         // her 10 sn'de bir kontrol
+const MAX_CREDIT = 15000;   // bir tikte en fazla 15 sn yazılır
+const IDLE_LIMIT = 90000;   // 1,5 dk hiç dokunulmadıysa okuma sayılmaz
+
 let lastInput = Date.now();
+let lastTick = Date.now();
 let reading = false;
-export const setReading = (on) => { reading = on; };
+export const setReading = (on) => { reading = on; lastTick = Date.now(); };
+
+const isReadingNow = () =>
+  reading &&
+  document.visibilityState === 'visible' &&
+  !!$('#view-book')?.classList.contains('active') &&
+  $('#study')?.hidden !== false &&
+  Date.now() - lastInput <= IDLE_LIMIT;
 
 export function initTracking() {
-  ['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+  ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev =>
     document.addEventListener(ev, () => { lastInput = Date.now(); }, { passive: true }));
+  // sekmeye geri dönünce aradaki boşluk okumaya yazılmasın
+  document.addEventListener('visibilitychange', () => { lastTick = Date.now(); });
+  window.addEventListener('focus', () => { lastTick = Date.now(); });
+
   setInterval(() => {
-    if (!reading) return;
-    if (document.visibilityState !== 'visible') return;
-    if (!$('#view-book')?.classList.contains('active')) return;
-    if (Date.now() - lastInput > 150000) return;   // 2.5 dk hareketsizse sayma
-    bumpStat('secs', 15);
-  }, 15000);
+    const now = Date.now();
+    const delta = Math.min(now - lastTick, MAX_CREDIT);
+    lastTick = now;
+    if (!isReadingNow() || delta < 1000) return;
+    bumpStat('secs', Math.round(delta / 1000));
+  }, TICK);
 }
 
 /* -------------------------------- yardımcı -------------------------------- */
