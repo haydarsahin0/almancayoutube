@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
 <meta name="theme-color" content="#0f1115">
-<meta name="description" content="YouTube videoları ve kitaplarla Almanca öğren: dokunduğun her kelimeyi yapay zeka A2 seviyesinde açıklasın.">
-<title>Almanca Öğren — Video & Kitap</title>
+<meta name="description" content="Almanca kitap okurken dokunduğun her kelimeyi yapay zeka açıklasın.">
+<title>Almanca Okuyucu</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇩🇪</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇩🇪</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="assets/css/app.css">
@@ -16,84 +16,48 @@
 <body>
 
 <header class="topbar">
-  <div class="brand"><span class="flag">🇩🇪</span> <span>Almanca Öğren</span></div>
-  <button class="icon-btn" id="btn-settings" aria-label="Ayarlar" title="Ayarlar">⚙️</button>
+  <button class="icon-btn" id="btn-book-lib" aria-label="Kitaplığım" title="Kitaplığım">🗂️</button>
+  <div class="brand" id="top-title">Almanca Okuyucu</div>
+  <div class="top-actions">
+    <button class="icon-btn" id="btn-reader-opts" aria-label="Görünüm" title="Görünüm"><b>Aa</b></button>
+    <button class="icon-btn" id="btn-settings" aria-label="Ayarlar" title="Ayarlar">⚙️</button>
+  </div>
 </header>
 
 <main id="views">
 
-  <!-- ================= VIDEO ================= -->
-  <section class="view" id="view-video" data-view="video">
-    <div class="player-wrap" id="player-wrap">
-      <div class="player-box"><div id="ytplayer"></div></div>
-      <div class="player-empty" id="player-empty">
-        <p>Aşağıdan bir video seç ya da YouTube bağlantısı yapıştır.</p>
-      </div>
-    </div>
-
-    <div class="tabs sub-tabs" id="video-subtabs">
-      <button class="sub-tab active" data-sub="transcript">Transkript</button>
-      <button class="sub-tab" data-sub="browse">Videolar</button>
-    </div>
-
-    <!-- transkript paneli -->
-    <div class="sub-view active" id="sub-transcript">
-      <div class="toolbar">
-        <button class="chip" id="btn-autoscroll" aria-pressed="true">🔁 Takip: Açık</button>
-        <button class="chip" id="btn-hardwords">✨ Zor kelimeler</button>
-        <button class="chip" id="btn-transcript-manual">📋 Transkripti elle ekle</button>
-        <select class="chip select" id="transcript-lang" title="Altyazı dili">
-          <option value="de">Almanca altyazı</option>
-          <option value="any">Herhangi bir dil</option>
-        </select>
-      </div>
-      <div id="transcript-status" class="status"></div>
-      <div id="transcript" class="transcript"></div>
-    </div>
-
-    <!-- video bulma paneli -->
-    <div class="sub-view" id="sub-browse">
-      <div class="field-row">
-        <input type="text" id="yt-input" inputmode="url" placeholder="YouTube bağlantısı, video ID'si veya arama kelimesi">
-        <button class="btn primary" id="btn-yt-go">Aç</button>
-      </div>
-      <p class="hint">Bağlantı yapıştırırsan video açılır, normal yazı yazarsan YouTube'da aranır.</p>
-
-      <div class="section-title">Almanca öğrenme kanalları</div>
-      <div class="chips" id="channel-chips"></div>
-      <div id="video-list" class="video-list"></div>
-    </div>
-  </section>
-
   <!-- ================= KİTAP ================= -->
-  <section class="view" id="view-book" data-view="book">
-    <div class="toolbar wrap">
-      <label class="btn primary file-btn">
-        📚 Dosya seç
-        <input type="file" id="book-file" accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain" hidden>
-      </label>
-      <button class="chip" id="btn-book-lib">🗂️ Kitaplığım</button>
-      <button class="chip" id="btn-reader-opts">Aa Görünüm</button>
-      <button class="chip" id="btn-book-hardwords">✨ Zor kelimeler</button>
+  <section class="view active" id="view-book" data-view="book">
+
+    <div class="reader-stage" id="reader-stage">
+      <article class="paper" id="paper" data-theme="sepia" lang="de">
+        <div class="running-head" id="running-head" hidden>
+          <span class="rh-t" id="rh-title"></span><span id="rh-num"></span>
+        </div>
+        <div class="flow" id="book-flow"></div>
+        <div class="page-foot" id="page-foot" hidden></div>
+      </article>
+
+      <div class="empty-state" id="book-empty">
+        <div class="big">📖</div>
+        <h2>Almanca oku, kelimeleri öğren</h2>
+        <p>Bir PDF, EPUB veya TXT dosyası yükle. Sonra metindeki <b>herhangi bir kelimeye dokun</b> —
+           anlamını, eş anlamlılarını ve örnek cümlelerini göstereyim.</p>
+        <label class="btn primary file-btn" style="margin-top:10px">
+          📚 Dosya seç
+          <input type="file" id="book-file" accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain" hidden>
+        </label>
+        <p class="hint" id="book-status"></p>
+      </div>
     </div>
 
-    <div id="book-status" class="status"></div>
-
-    <div class="book-nav" id="book-nav" hidden>
-      <button class="nav-btn" id="btn-prev-page" title="Önceki">‹</button>
-      <select id="book-chapter" class="select grow"></select>
-      <button class="nav-btn" id="btn-next-page" title="Sonraki">›</button>
+    <div class="reader-bar" id="reader-bar" hidden>
+      <button class="nav-btn" id="btn-prev" aria-label="Önceki sayfa">‹</button>
+      <button class="chip grow" id="btn-toc">İçindekiler</button>
+      <button class="nav-btn" id="btn-hardwords" aria-label="Zor kelimeler">✨</button>
+      <button class="nav-btn" id="btn-next" aria-label="Sonraki sayfa">›</button>
     </div>
     <div class="book-progress" id="book-progress" hidden><span></span></div>
-
-    <div class="paper-wrap">
-      <article id="book-content" class="book-content reader" lang="de" data-theme="sepia">
-        <div class="empty-state">
-          <div class="big">📖</div>
-          <p>Bir PDF, EPUB veya TXT dosyası yükle. Sonra metindeki <b>herhangi bir kelimeye dokun</b> — anlamını, eş anlamlılarını ve örnek cümlelerini göstereyim.</p>
-        </div>
-      </article>
-    </div>
   </section>
 
   <!-- ================= KELİMELERİM ================= -->
@@ -111,8 +75,7 @@
 </main>
 
 <nav class="tabbar">
-  <button class="tab active" data-goto="video"><span>🎬</span>Video</button>
-  <button class="tab" data-goto="book"><span>📚</span>Kitap</button>
+  <button class="tab active" data-goto="book"><span>📖</span>Oku</button>
   <button class="tab" data-goto="vocab"><span>⭐</span>Kelimelerim</button>
 </nav>
 

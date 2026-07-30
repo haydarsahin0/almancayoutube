@@ -1,15 +1,11 @@
-# 🇩🇪 Almanca Öğren — Video & Kitap
+# 📖 Almanca Okuyucu
 
-Telefon ve tablette çalışan, kurulum gerektirmeyen bir Almanca öğrenme uygulaması.
-İki bölümü var:
+Telefon ve tablette çalışan, kurulum gerektirmeyen bir Almanca okuma uygulaması.
 
-1. **🎬 Video** — Almanca YouTube videolarını, senkron transkriptiyle birlikte izlersin.
-   Transkriptteki **herhangi bir kelimeye dokunduğunda** yapay zeka o kelimeyi öğretir.
-2. **📚 Kitap** — PDF, EPUB veya TXT dosyası yüklersin; okurken aynı şekilde kelimeye dokunup öğrenirsin.
+PDF, EPUB veya TXT dosyası yüklersin; kitap **gerçek bir kitap gibi sayfa sayfa** açılır.
+Metindeki **herhangi bir kelimeye dokunduğunda** yapay zeka o kelimeyi sana öğretir:
 
-Bir kelimeye dokunduğunda gösterilenler:
-
-- Kelimenin **A2 seviyesinde basit Almanca açıklaması** (`Das Wetter sagt, ob es warm oder kalt ist.`)
+- Kelimenin **basit Almanca açıklaması** (seviyene göre — `Das Wetter sagt, ob es warm oder kalt ist.`)
 - **Türkçe karşılıkları** ve o cümledeki anlamı
 - Almanların gerçekten kullandığı **eş anlamlı kelimeler** (Türkçeleri ve aralarındaki farkla)
 - Zıt anlamlılar
@@ -25,7 +21,7 @@ Bir kelimeye dokunduğunda gösterilenler:
 
 1. GitHub'da bu depoyu aç → **Settings** → sol menüden **Pages**
 2. **Build and deployment → Source** kısmında **Deploy from a branch** seç
-3. **Branch**: bu dalı (`claude/german-learning-video-pdf-jog23v` ya da `main`) ve klasör olarak **`/ (root)`** seç → **Save**
+3. **Branch**: bu dalı ve klasör olarak **`/ (root)`** seç → **Save**
 4. 1-2 dakika sonra sayfanın üstünde adresin çıkar:
 
 ```
@@ -55,47 +51,39 @@ Seviyeni de (A1/A2/B1/B2) Ayarlar'dan seçersin; açıklamalar ona göre basitle
 
 ## Kullanım
 
-### Video
+### Okuma
 
-- **Videolar** sekmesinde hazır Almanca öğrenme kanalları var (Easy German, DW Learn German, …).
-  Kanala dokun → son videoları listelenir → birine dokun.
-- Arama kutusuna **YouTube bağlantısı** yapıştırırsan o video açılır; normal bir şey yazarsan YouTube'da aranır.
-- Video oynarken transkript otomatik kayar, o an konuşulan satır vurgulanır.
-- Soldaki **zaman damgasına** dokunursan video oraya atlar.
-- **Kelimeye dokun** → açıklama paneli açılır.
-- Birden fazla kelimeyi **seçersen** (parmağını basılı tutup sürükle) → “Seçimi açıkla” çıkar, deyimleri/kalıpları açıklar.
-- **✨ Zor kelimeler** → yapay zeka o videodaki senin seviyenin üstündeki kelimeleri listeler.
-- Videoda altyazı yoksa: **📋 Transkripti elle ekle** ile YouTube uygulamasındaki transkripti
-  yapıştırabilir ya da `.srt` / `.vtt` dosyası yükleyebilirsin.
+- Sağ üstteki **🗂️** → **Yeni dosya seç** ile PDF / EPUB / TXT yükle.
+  Dosya cihazında saklanır (IndexedDB), kaldığın sayfa hatırlanır.
+- **Sayfa çevirmek için**: parmağını sağa/sola kaydır, sayfanın boş bir yerine dokun
+  ya da alttaki **‹ ›** düğmelerini kullan. (Bilgisayarda ok tuşları da çalışır.)
+  Metin ekrana sığacak şekilde sayfalara bölünür — uzun uzun aşağı kaydırma yok.
+- Alt çubuktaki **bölüm · sayfa** yazısına dokununca **içindekiler** açılır, istediğin bölüme atlarsın.
+- **Aa** → tema (📜 Kağıt / ☀️ Açık / 🌙 Gece), yazı boyutu, yazı tipi (kitap/ekran),
+  satır aralığı ve hizalama. Değiştirince sayfalar anında yeniden hesaplanır, seçimin hatırlanır.
+- **✨** → yapay zeka o bölümdeki senin seviyenin üstündeki kelimeleri listeler.
+- Metindeki **kelimeye dokun** → açıklama paneli açılır.
+- Birden fazla kelimeyi **seçersen** (basılı tutup sürükle) → “Seçimi açıkla” çıkar,
+  deyimleri ve kalıpları açıklar.
 
-### Kitap
-
-- **📚 Dosya seç** → PDF / EPUB / TXT yükle. Dosya cihazında saklanır (IndexedDB), kaldığın yer hatırlanır.
-- Metin gerçek bir kitap gibi dizilir: serif yazı tipi, iki yana yaslı satırlar, Almanca heceleme,
-  bölüm başında büyük harf (drop cap), ortalanmış bölüm başlıkları, üstte kitap adı ve sayfa numarası,
-  altta ilerleme çubuğu.
-- **Aa Görünüm** → tema (📜 Kağıt / ☀️ Açık / 🌙 Gece), yazı boyutu, yazı tipi (kitap/ekran),
-  satır aralığı ve hizalama. Seçimin hatırlanır.
-- Üstteki `‹ ›` düğmeleri ve açılır listeyle bölüm/sayfa değiştirirsin; her bölümün sonunda da
-  "Önceki / Sonraki" düğmeleri vardır.
-- Metindeki kelimeye dokun → aynı açıklama paneli.
-- **🗂️ Kitaplığım** → daha önce yüklediğin dosyalar.
+Metin gerçek bir kitap gibi dizilir: serif yazı tipi, iki yana yaslı satırlar, Almanca heceleme,
+bölüm başında büyük harf (drop cap), ortalanmış bölüm başlıkları, üstte kitap adı ve sayfa numarası,
+altta ilerleme çubuğu.
 
 ### Kelimelerim
 
 - Panelde **⭐** dediğin kelimeler burada birikir.
 - **🎴 Kart çalışması** ile tekrar edersin (bilmediklerin öne gelir).
 - **⬇️ Dışa aktar / ⬆️ İçe aktar** ile kelime listeni yedekleyebilirsin.
-- Kaydettiğin kelimeler video ve kitapta sarı olarak işaretlenir.
+- Kaydettiğin kelimeler kitapta işaretli görünür.
 
 ---
 
 ## Teknik notlar
 
 - Tamamen istemci tarafında çalışır; sunucu, veritabanı, derleme adımı yok. Statik dosyalar yeter.
-- YouTube altyazıları tarayıcıdan doğrudan indirilemediği için (CORS), açık CORS aracıları
-  sırayla denenir (`api.allorigins.win`, `corsproxy.io`, `api.codetabs.com`, …). Biri çalışmazsa
-  diğerine geçilir; hiçbiri çalışmazsa transkripti elle ekleyebilirsin.
+- Sayfalama CSS çoklu sütun (`column-width`) ile yapılır: bölüm ekran boyu sütunlara akıtılır,
+  sayfa çevirmek sütunları yatay kaydırmaktır. Ekran döndüğünde/punto değişince yeniden ölçülür.
 - PDF için `pdf.js`, EPUB için `JSZip` CDN'den yüklenir.
 - Yapay zeka yanıtları cihazda önbelleğe alınır — aynı kelimeye tekrar dokunmak ücretsizdir.
 
@@ -108,10 +96,8 @@ sw.js                   çevrimdışı önbellek
 assets/css/app.css      tüm stiller
 assets/js/main.js       giriş, sekmeler, ayarlar
 assets/js/ai.js         OpenAI istekleri ve istemler
+assets/js/book.js       PDF / EPUB / TXT okuyucu ve sayfalama
 assets/js/word.js       kelime paneli
-assets/js/video.js      oynatıcı + transkript
-assets/js/youtube.js    altyazı indirme, arama, kanallar
-assets/js/book.js       PDF / EPUB / TXT okuyucu
 assets/js/vocab.js      kelime defteri ve kartlar
 assets/js/store.js      ayarlar, kayıtlar, kitaplık
 assets/js/util.js       ortak yardımcılar

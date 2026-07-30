@@ -52,13 +52,6 @@ export function wordSpans(text) {
 
 export const normWord = (w) => String(w || '').replace(/[’]/g, "'").trim().toLowerCase();
 
-export function fmtTime(sec) {
-  sec = Math.max(0, Math.floor(sec || 0));
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-  return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-           : `${m}:${String(s).padStart(2, '0')}`;
-}
-
 export function toast(msg, ms = 2600) {
   const t = $('#toast');
   if (!t) return;
@@ -81,59 +74,10 @@ export function speak(text, lang = 'de-DE') {
 }
 if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); } catch (e) {} }
 
-/* ------------------------------------------------------------------ */
-/* CORS aracıları — YouTube sayfaları tarayıcıdan doğrudan okunamadığı  */
-/* için birkaç genel proxy sırayla denenir.                            */
-/* ------------------------------------------------------------------ */
-const PROXIES = [
-  { id: 'direct', url: u => u },
-  { id: 'allorigins', url: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
-  { id: 'corsproxy', url: u => 'https://corsproxy.io/?url=' + encodeURIComponent(u) },
-  { id: 'codetabs', url: u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u) },
-  { id: 'isomorphic', url: u => 'https://cors.isomorphic-git.org/' + u.replace(/^https?:\/\//, 'https://') },
-];
-const PREF_KEY = 'dl.proxy.pref';
-
-async function tryFetch(url, timeout) {
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), timeout);
-  try {
-    const r = await fetch(url, { signal: c.signal, credentials: 'omit', redirect: 'follow' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return await r.text();
-  } finally { clearTimeout(t); }
-}
-
-/**
- * CORS engelini aşarak metin çeker. `validate(text)` doğru sonucu ayırt eder.
- */
-export async function fetchVia(url, { timeout = 16000, validate = null, skipDirect = false } = {}) {
-  const pref = localStorage.getItem(PREF_KEY);
-  let list = PROXIES.filter(p => !(skipDirect && p.id === 'direct'));
-  if (pref) list = [...list.filter(p => p.id === pref), ...list.filter(p => p.id !== pref)];
-  let lastErr;
-  for (const p of list) {
-    try {
-      const txt = await tryFetch(p.url(url), timeout);
-      if (!txt || txt.length < 20) throw new Error('boş yanıt');
-      if (validate && !validate(txt)) throw new Error('beklenen içerik yok');
-      if (p.id !== 'direct') localStorage.setItem(PREF_KEY, p.id);
-      return txt;
-    } catch (e) { lastErr = e; }
-  }
-  throw new Error('İnternetten okunamadı: ' + (lastErr ? lastErr.message : 'bilinmeyen hata'));
-}
-
 export function hash(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
-}
-
-export function decodeEntities(s) {
-  const ta = document.createElement('textarea');
-  ta.innerHTML = String(s ?? '');
-  return ta.value;
 }
 
 /** Bir kelimeyi içeren cümleyi metinden çıkarır */

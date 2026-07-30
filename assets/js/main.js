@@ -4,16 +4,14 @@ import { getSettings, setSettings } from './store.js';
 import { listModels } from './ai.js';
 import { initModal, showModal, closeModal } from './ui.js';
 import { initWordSheet } from './word.js';
-import { initVideo, pauseVideo } from './video.js';
-import { initBook } from './book.js';
+import { initBook, applyReaderStyle } from './book.js';
 import { initVocab } from './vocab.js';
 
 /* --------------------------------- sekmeler -------------------------------- */
 function goto(name) {
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.goto === name));
-  if (name !== 'video') pauseVideo();
-  window.scrollTo({ top: 0 });
+  if (name === 'book') applyReaderStyle(true);
   localStorage.setItem('dl.tab', name);
 }
 
@@ -102,11 +100,11 @@ function settingsDialog() {
 
 /* ---------------------------------- açılış -------------------------------- */
 function welcome() {
-  showModal('Hoş geldin! 🇩🇪', el('div', {},
-    el('p', {}, 'Bu uygulama iki şekilde Almanca öğretir:'),
-    el('p', {}, '🎬 ', el('b', {}, 'Video'), ': Almanca YouTube videolarını altyazı/transkriptiyle birlikte izlersin. ' +
-      'Transkriptteki herhangi bir kelimeye dokunduğunda anlamını, eş anlamlılarını ve örnek cümlelerini gösteririm.'),
-    el('p', {}, '📚 ', el('b', {}, 'Kitap'), ': PDF, EPUB ya da TXT dosyası yüklersin; aynı şekilde kelimeye dokunup öğrenirsin.'),
+  showModal('Hoş geldin! 📖', el('div', {},
+    el('p', {}, '📚 ', el('b', {}, 'Kitap yükle'), ': PDF, EPUB ya da TXT. Kitap gerçek bir kitap gibi ' +
+      'sayfa sayfa açılır — sayfayı çevirmek için sağa/sola kaydır ya da sayfanın kenarına dokun.'),
+    el('p', {}, '👆 ', el('b', {}, 'Kelimeye dokun'), ': anlamını, basit Almanca açıklamasını, ' +
+      'eş anlamlılarını ve örnek cümlelerini gösteririm.'),
     el('p', { class: 'hint' }, 'Başlamak için OpenAI API anahtarını girmen gerekiyor. Anahtar sadece bu cihazda saklanır.'),
     el('div', { style: 'display:flex;gap:8px;margin-top:14px' },
       el('button', { class: 'btn primary grow', onclick: () => { closeModal(); settingsDialog(); } }, 'API anahtarını gir'),
@@ -118,13 +116,12 @@ function welcome() {
 function boot() {
   initModal();
   initWordSheet();
-  initVideo();
   initBook();
   initVocab();
 
   $$('.tab').forEach(t => t.addEventListener('click', () => goto(t.dataset.goto)));
   $('#btn-settings').addEventListener('click', settingsDialog);
-  goto(localStorage.getItem('dl.tab') || 'video');
+  goto(localStorage.getItem('dl.tab') === 'vocab' ? 'vocab' : 'book');
 
   if (!localStorage.getItem('dl.seen')) setTimeout(welcome, 300);
   else if (!getSettings().apiKey) setTimeout(() => toast('⚙️ Ayarlar\'dan OpenAI anahtarını girmeyi unutma'), 900);

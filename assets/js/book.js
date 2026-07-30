@@ -1,20 +1,26 @@
-// Kitap görünümü: PDF / EPUB / TXT okuma + kelimeye dokunma
+// Okuyucu: PDF / EPUB / TXT → sayfa sayfa çevrilen kitap + kelimeye dokunma
 import { $, el, toast, wordSpans, sentenceAround, hash, normWord } from './util.js';
-import { attachWordTaps } from './word.js';
+import { attachWordTaps, openWord, openPhrase } from './word.js';
 import { getSettings, setSettings, vocabKeys, putBook, getBook, listBooks, deleteBook } from './store.js';
 import { showModal, closeModal } from './ui.js';
-import { showHardWords } from './video.js';
+import { hardWords } from './ai.js';
 
 const PDFJS_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs';
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs';
 const JSZIP_URL = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
+const MAX_BLOCKS = 60;   // bir bölüm en fazla bu kadar paragraf tutar (akıcı sayfalama için)
+const GAP = 32;
 
-let book = null;     // {id,name,type,chapters:[{title,blocks:[{tag,text}]}],pos}
-let chapter = 0;
+let book = null;         // {id,name,type,chapters:[{title,blocks}],pos}
+let chapter = 0, page = 0, pages = 1, pageW = 0;
+let wantPage = null, wantT = null;   // yerleşim oturana kadar korunacak hedef sayfa
+
+const flowEl = () => $('#book-flow');
+const paperEl = () => $('#paper');
 
 function status(msg, isErr = false) {
   const s = $('#book-status');
-  s.className = 'status' + (isErr ? ' err' : '');
+  s.className = 'hint' + (isErr ? ' err' : '');
   s.replaceChildren();
   if (msg) s.append(msg.nodeType ? msg : document.createTextNode(msg));
 }
@@ -28,6 +34,21 @@ function loadScript(url) {
   });
 }
 
+/* --------------------------- bölümleri parçalama -------------------------- */
+function splitLong(chapters) {
+  const out = [];
+  for (const ch of chapters) {
+    if (ch.blocks.length <= MAX_BLOCKS) { out.push(ch); continue; }
+    for (let i = 0; i < ch.blocks.length; i += MAX_BLOCKS) {
+      out.push({
+        title: i === 0 ? ch.title : `${ch.title} (devam ${Math.floor(i / MAX_BLOCKS) + 1})`,
+        blocks: ch.blocks.slice(i, i + MAX_BLOCKS),
+      });
+    }
+  }
+  return out;
+}
+
 /* ---------------------------------- PDF ---------------------------------- */
 async function parsePdf(data, onProgress) {
   const pdfjs = await import(PDFJS_URL);
@@ -36,9 +57,8 @@ async function parsePdf(data, onProgress) {
   const chapters = [];
   for (let p = 1; p <= doc.numPages; p++) {
     onProgress?.(p, doc.numPages);
-    const page = await doc.getPage(p);
-    const tc = await page.getTextContent();
-    // satırları y konumuna göre grupla
+    const pg = await doc.getPage(p);
+    const tc = await pg.getTextContent();
     const lines = [];
     let cur = null;
     for (const it of tc.items) {
@@ -54,17 +74,14 @@ async function parsePdf(data, onProgress) {
       }
       if (it.hasEOL) cur = null;
     }
-    // satırları paragraflara çevir
     const blocks = [];
-    let para = '';
-    let prevY = null, prevH = 12;
+    let para = '', prevY = null, prevH = 12;
     const hs = lines.map(l => l.h).sort((a, b) => a - b);
     const med = hs[Math.floor(hs.length / 2)] || 12;
     for (const ln of lines) {
       const text = ln.parts.join('').replace(/\s+/g, ' ').trim();
       if (!text) continue;
-      // büyük puntolu kısa satırlar = başlık
-      if (ln.h >= med * 1.22 && text.length < 90) {
+      if (ln.h >= med * 1.22 && text.length < 90) {           // büyük punto = başlık
         if (para.trim()) { blocks.push({ tag: 'p', text: para.trim() }); para = ''; }
         blocks.push({ tag: 'h3', text });
         prevY = ln.y; prevH = ln.h;
@@ -73,13 +90,14 @@ async function parsePdf(data, onProgress) {
       const gap = prevY === null ? 0 : prevY - ln.y;
       const newPara = prevY !== null && (gap > prevH * 1.75 || gap < 0 || Math.abs(ln.h - prevH) > med * 0.3);
       if (newPara && para) { blocks.push({ tag: 'p', text: para.trim() }); para = ''; }
-      if (/-$/.test(para)) para = para.slice(0, -1) + text;      // satır sonu tirelemesi
+      if (/-$/.test(para)) para = para.slice(0, -1) + text;   // satır sonu tirelemesi
       else para = para ? para + ' ' + text : text;
       prevY = ln.y; prevH = ln.h;
     }
     if (para.trim()) blocks.push({ tag: 'p', text: para.trim() });
-    chapters.push({ title: `Sayfa ${p}`, blocks });
+    if (blocks.length) chapters.push({ title: `Sayfa ${p}`, blocks });
   }
+  if (!chapters.length) throw new Error('PDF içinde metin bulunamadı (taranmış görüntü olabilir).');
   return chapters;
 }
 
@@ -115,19 +133,19 @@ async function parseEpub(arrayBuffer, onProgress) {
     .filter(m => m && /html/i.test(m.type));
 
   const chapters = [];
+  const sel = 'h1,h2,h3,h4,p,li,blockquote,dd,td,pre';
   for (let i = 0; i < spine.length; i++) {
     onProgress?.(i + 1, spine.length);
     const path = resolvePath(base, spine[i].href);
     const f = zip.file(path) || zip.file(decodeURIComponent(path));
     if (!f) continue;
     const doc = xmlDoc(await f.async('text'), 'application/xhtml+xml');
-    doc.querySelectorAll('script,style,svg,nav[epub\\:type=toc]').forEach(n => n.remove());
+    doc.querySelectorAll('script,style,svg,nav').forEach(n => n.remove());
     const blocks = [];
     let title = '';
     const bodyEl = doc.body || doc.documentElement;
-    const sel = 'h1,h2,h3,h4,p,li,blockquote,dd,td,pre';
     bodyEl.querySelectorAll(sel).forEach(n => {
-      if (n.parentElement && n.parentElement.closest(sel)) return; // iç içe bloklarda metin tekrarını önle
+      if (n.parentElement && n.parentElement.closest(sel)) return;  // iç içe bloklarda tekrarı önle
       const text = (n.textContent || '').replace(/\s+/g, ' ').trim();
       if (!text) return;
       const tag = /^h[1-4]$/i.test(n.tagName) ? 'h' + Math.min(3, Number(n.tagName[1])) : 'p';
@@ -147,59 +165,108 @@ async function parseEpub(arrayBuffer, onProgress) {
 /* ---------------------------------- TXT ---------------------------------- */
 function parseTxt(text) {
   const paras = text.replace(/\r/g, '').split(/\n\s*\n/).map(p => p.replace(/\n/g, ' ').trim()).filter(Boolean);
-  // kısa, noktalama ile bitmeyen satırlar başlıktır (Kapitel 1, bölüm adları…)
   const isHeading = (t) => t.length <= 70 && !/[.!?:;,»"']$/.test(t) && t.split(' ').length <= 9;
   const blocks = paras.map(t => ({ tag: isHeading(t) ? 'h2' : 'p', text: t }));
-
   const chapters = [];
   let cur = null;
-  const push = (title) => { cur = { title: title || `Bölüm ${chapters.length + 1}`, blocks: [] }; chapters.push(cur); };
   for (const b of blocks) {
-    const long = cur && cur.blocks.length >= 12;
-    if (!cur || (b.tag === 'h2' && long) || cur.blocks.length >= 45) push(b.tag === 'h2' ? b.text : '');
+    if (!cur || (b.tag === 'h2' && cur.blocks.length >= 8)) {
+      cur = { title: b.tag === 'h2' ? b.text : `Bölüm ${chapters.length + 1}`, blocks: [] };
+      chapters.push(cur);
+    }
     cur.blocks.push(b);
-    if (cur.blocks.length === 1 && b.tag === 'h2') cur.title = b.text;
   }
   return chapters.length ? chapters : [{ title: 'Metin', blocks: [{ tag: 'p', text }] }];
 }
 
-/* -------------------------------- gösterim -------------------------------- */
+/* ------------------------------- sayfalama -------------------------------- */
+let lastW = 0, lastH = 0;
+
+/** Sütunlara akan metnin kaç sayfa ettiğini içeriğin gerçek genişliğinden ölçer */
+function measurePages() {
+  const flow = flowEl();
+  const w = flow.clientWidth, h = flow.clientHeight;
+  if (!w || !h) return;
+  pageW = w + GAP;
+  flow.style.columnWidth = w + 'px';
+  flow.style.columnGap = GAP + 'px';
+  lastW = w; lastH = h;
+
+  // transform her ikisini de aynı kaydırdığı için göreli ölçüm doğru sonucu verir
+  const fr = flow.getBoundingClientRect();
+  let maxRight = 0;
+  for (const child of flow.children) {
+    for (const r of child.getClientRects()) {
+      if (r.width || r.height) maxRight = Math.max(maxRight, r.right - fr.left);
+    }
+  }
+  pages = Math.max(1, Math.ceil((maxRight - 1) / pageW));
+}
+
+function showPage(i, animate = true) {
+  const flow = flowEl();
+  page = Math.max(0, Math.min(i, pages - 1));
+  if (!animate) flow.classList.add('no-anim');
+  flow.style.transform = `translateX(${-page * pageW}px)`;
+  if (!animate) requestAnimationFrame(() => flow.classList.remove('no-anim'));
+  updateChrome();
+  savePos();
+}
+
+function updateChrome() {
+  if (!book) return;
+  const ch = book.chapters[chapter];
+  $('#rh-title').textContent = ch.title;
+  $('#rh-num').textContent = `${page + 1} / ${pages}`;
+  $('#page-foot').textContent = `${chapter + 1}. bölüm · sayfa ${page + 1} / ${pages}`;
+  $('#btn-toc').textContent = `${ch.title} · ${page + 1}/${pages}`;
+  $('#btn-prev').disabled = chapter === 0 && page === 0;
+  $('#btn-next').disabled = chapter >= book.chapters.length - 1 && page >= pages - 1;
+  const overall = ((chapter + (pages > 1 ? page / pages : 0)) / book.chapters.length) * 100;
+  $('#book-progress').firstElementChild.style.width = Math.min(100, Math.max(0.5, overall)).toFixed(1) + '%';
+}
+
+export function nextPage() {
+  if (!book) return;
+  wantPage = null;
+  if (page < pages - 1) return showPage(page + 1);
+  if (chapter < book.chapters.length - 1) return renderChapter(chapter + 1, 0);
+  toast('Kitabın sonu 🎉');
+}
+export function prevPage() {
+  if (!book) return;
+  wantPage = null;
+  if (page > 0) return showPage(page - 1);
+  if (chapter > 0) return renderChapter(chapter - 1, 'last');
+}
+
+/* ------------------------------- gösterim --------------------------------- */
 const SERIF = 'Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Times New Roman",serif';
 const SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif';
 
-export function applyReaderStyle() {
+export function applyReaderStyle(repaginate = false) {
   const s = getSettings();
   const r = document.documentElement.style;
   r.setProperty('--reader-size', s.fontSize + 'px');
-  r.setProperty('--reader-lh', String(s.lineHeight || 1.78));
+  r.setProperty('--reader-lh', String(s.lineHeight || 1.75));
   r.setProperty('--reader-align', s.justify ? 'justify' : 'left');
   r.setProperty('--reader-font', s.readerFont === 'sans' ? SANS : SERIF);
-  const box = $('#book-content');
-  if (box) box.dataset.theme = s.readerTheme || 'sepia';
+  paperEl().dataset.theme = s.readerTheme || 'sepia';
+  if (repaginate && book) {
+    const ratio = pages > 1 ? page / (pages - 1) : 0;
+    requestAnimationFrame(() => {
+      measurePages();
+      showPage(Math.round(ratio * (pages - 1)), false);
+    });
+  }
 }
 
-function updateProgress() {
-  const bar = $('#book-progress');
-  if (!book) { bar.hidden = true; return; }
-  bar.hidden = false;
-  const box = $('#book-content');
-  const h = Math.max(1, box.scrollHeight - window.innerHeight);
-  const within = Math.min(1, Math.max(0, (window.scrollY - box.offsetTop + 120) / h));
-  const pct = ((chapter + within) / book.chapters.length) * 100;
-  bar.firstElementChild.style.width = Math.min(100, Math.max(0.5, pct)).toFixed(1) + '%';
-}
-
-function renderChapter(idx, scrollTo = 0) {
+function renderChapter(idx, toPage = 0) {
   if (!book) return;
   chapter = Math.max(0, Math.min(idx, book.chapters.length - 1));
   const ch = book.chapters[chapter];
-  const box = $('#book-content');
   const known = vocabKeys();
-
-  const nodes = [el('div', { class: 'running-head' },
-    el('span', { class: 'rh-t' }, book.name.replace(/\.(pdf|epub|txt)$/i, '')),
-    el('span', {}, `${chapter + 1} / ${book.chapters.length}`))];
-
+  const nodes = [];
   let firstPara = true;
   for (const b of ch.blocks) {
     const n = el(b.tag === 'p' ? 'p' : b.tag);
@@ -208,20 +275,20 @@ function renderChapter(idx, scrollTo = 0) {
     for (const w of n.querySelectorAll('.w')) if (known.has(normWord(w.textContent))) w.classList.add('saved');
     nodes.push(n);
   }
+  nodes.push(el('p', { class: 'chapter-tail' }, chapter >= book.chapters.length - 1 ? '· son ·' : '· · ·'));
 
-  nodes.push(el('div', { class: 'page-mark' }, ch.title));
-  nodes.push(el('div', { class: 'chapter-end' },
-    el('button', { disabled: chapter === 0 || null, onclick: () => renderChapter(chapter - 1) }, '‹ Önceki'),
-    el('button', { disabled: chapter >= book.chapters.length - 1 || null, onclick: () => renderChapter(chapter + 1) }, 'Sonraki ›')));
-
-  box.replaceChildren(...nodes);
-  $('#book-chapter').value = String(chapter);
-  $('#btn-prev-page').disabled = chapter === 0;
-  $('#btn-next-page').disabled = chapter >= book.chapters.length - 1;
-  window.scrollTo({ top: scrollTo || 0, behavior: 'auto' });
-  book.pos = { chapter, scroll: 0 };
-  updateProgress();
-  savePos();
+  const flow = flowEl();
+  flow.classList.add('no-anim');
+  flow.style.transform = 'none';
+  flow.replaceChildren(...nodes);
+  flow.scrollTop = 0;
+  measurePages();
+  const target = toPage === 'last' ? pages - 1 : toPage;
+  // yeni açılan kitapta yerleşim biraz sonra oturabilir; hedef sayfayı kısa süre koru
+  wantPage = target;
+  clearTimeout(wantT);
+  wantT = setTimeout(() => { wantPage = null; }, 1500);
+  showPage(target, false);
 }
 
 let saveT = null;
@@ -229,8 +296,8 @@ function savePos() {
   if (!book) return;
   clearTimeout(saveT);
   saveT = setTimeout(() => {
-    putBook({ ...book, pos: { chapter, scroll: window.scrollY }, opened: Date.now() }).catch(() => {});
-  }, 700);
+    putBook({ ...book, pos: { chapter, page }, opened: Date.now() }).catch(() => {});
+  }, 500);
 }
 
 function contextOf(spanEl) {
@@ -246,27 +313,40 @@ function contextOf(spanEl) {
   return sentenceAround(full, idx) || full.slice(0, 300);
 }
 
-function setupNav() {
-  const sel = $('#book-chapter');
-  sel.replaceChildren(...book.chapters.map((c, i) => el('option', { value: String(i) }, `${i + 1}. ${c.title}`)));
-  sel.onchange = () => renderChapter(Number(sel.value));
-  $('#book-nav').hidden = false;
+function useBook(b) {
+  book = b;
+  $('#book-empty').hidden = true;
+  paperEl().classList.add('on');
+  $('#running-head').hidden = false;
+  $('#page-foot').hidden = false;
+  $('#reader-bar').hidden = false;
+  $('#book-progress').hidden = false;
+  $('#top-title').textContent = b.name.replace(/\.(pdf|epub|txt)$/i, '');
+  // çubuklar görünür olduktan sonra yerleşim otursun diye iki kare bekle
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    renderChapter(b.pos?.chapter || 0, b.pos?.page || 0)));
 }
 
-async function useBook(b, restore = true) {
-  book = b;
-  setupNav();
-  renderChapter(restore ? (b.pos?.chapter || 0) : 0);
-  if (restore && b.pos?.scroll) setTimeout(() => window.scrollTo({ top: b.pos.scroll }), 60);
-  status(`${b.name} • ${b.chapters.length} ${b.type === 'pdf' ? 'sayfa' : 'bölüm'} • kelimeye dokun`);
+/** Ekran/kağıt boyu değişince (döndürme, tarayıcı çubuğu, punto) yeniden sayfala */
+function relayout() {
+  if (!book) return;
+  const flow = flowEl();
+  if (flow.clientWidth === lastW && flow.clientHeight === lastH) return;
+  const ratio = pages > 1 ? page / (pages - 1) : 0;
+  const target = wantPage;
+  measurePages();
+  showPage(target !== null ? target : Math.round(ratio * (pages - 1)), false);
 }
 
 /* -------------------------------- dosya aç -------------------------------- */
 async function handleFile(file) {
   const name = file.name;
   const ext = (name.split('.').pop() || '').toLowerCase();
+  paperEl().classList.remove('on');
+  $('#book-empty').hidden = false;
+  $('#reader-bar').hidden = true;
+  $('#book-progress').hidden = true;
   status(el('span', {}, el('span', { class: 'spinner' }), ` ${name} okunuyor…`));
-  $('#book-content').replaceChildren(el('div', { class: 'empty-state' }, el('div', { class: 'big' }, '⏳'), el('p', {}, 'Dosya işleniyor, biraz sürebilir…')));
   try {
     const buf = await file.arrayBuffer();
     const id = hash(name + ':' + file.size);
@@ -281,69 +361,111 @@ async function handleFile(file) {
     } else {
       chapters = parseTxt(new TextDecoder('utf-8').decode(buf));
     }
-    const b = { id, name, type: ext, chapters, pos: existing?.pos || { chapter: 0, scroll: 0 }, opened: Date.now() };
+    chapters = splitLong(chapters);
+    const b = { id, name, type: ext, chapters, pos: existing?.pos || { chapter: 0, page: 0 }, opened: Date.now() };
     await putBook(b).catch(e => console.warn('kitap kaydedilemedi', e));
-    await useBook(b, !!existing);
+    status('');
+    useBook(b);
   } catch (e) {
     console.error(e);
     status('Açılamadı: ' + e.message, true);
-    $('#book-content').replaceChildren(el('div', { class: 'err-box' }, 'Dosya açılamadı: ' + e.message));
   }
 }
 
 /* -------------------------------- kitaplık -------------------------------- */
 async function libraryDialog() {
   const books = await listBooks().catch(() => []);
+  const pick = el('label', { class: 'btn primary file-btn', style: 'width:100%' }, '📚 Yeni dosya seç (PDF / EPUB / TXT)');
+  const input = el('input', { type: 'file', accept: '.pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain', hidden: true });
+  pick.append(input);
+  input.addEventListener('change', () => {
+    const f = input.files?.[0];
+    if (f) { closeModal(); handleFile(f); }
+  });
   showModal('Kitaplığım', el('div', { class: 'list-lines' },
-    books.length ? null : el('p', { class: 'hint' }, 'Henüz kitap yok. Yukarıdan bir dosya seç.'),
+    pick,
+    books.length ? null : el('p', { class: 'hint' }, 'Henüz kitap yok.'),
     ...books.map(b => el('div', { class: 'vrow' },
       el('button', {
         class: 'main', style: 'background:none;border:0;text-align:left',
-        onclick: async () => { closeModal(); await useBook(b); },
+        onclick: () => { closeModal(); useBook(b); },
       },
         el('div', { class: 'de' }, b.name),
-        el('div', { class: 'src' }, `${b.chapters.length} ${b.type === 'pdf' ? 'sayfa' : 'bölüm'} • en son ${new Date(b.opened).toLocaleDateString('tr-TR')}`)),
+        el('div', { class: 'src' }, `${b.chapters.length} bölüm • ${(b.pos?.chapter || 0) + 1}. bölümde kaldın • ${new Date(b.opened).toLocaleDateString('tr-TR')}`)),
       el('div', { class: 'acts' }, el('button', {
         class: 'mini', title: 'Sil',
-        onclick: async (e) => { await deleteBook(b.id); e.currentTarget.closest('.vrow').remove(); toast('Silindi'); },
+        onclick: async (e) => {
+          await deleteBook(b.id);
+          e.currentTarget.closest('.vrow').remove();
+          if (book && book.id === b.id) location.reload();
+          toast('Silindi');
+        },
       }, '🗑')))),
   ));
+}
+
+/* ------------------------------ içindekiler ------------------------------- */
+function tocDialog() {
+  if (!book) return;
+  showModal('İçindekiler', el('div', { class: 'list-lines' },
+    ...book.chapters.map((c, i) => el('button', {
+      class: 'toc-row' + (i === chapter ? ' on' : ''),
+      onclick: () => { closeModal(); renderChapter(i, 0); },
+    }, el('span', { class: 'n' }, String(i + 1)), el('span', { class: 't' }, c.title))),
+  ));
+}
+
+/* ------------------------------ zor kelimeler ----------------------------- */
+async function showHardWords() {
+  if (!book) return toast('Önce bir kitap aç.');
+  const text = book.chapters[chapter].blocks.map(b => b.text).join(' ');
+  showModal('Zor kelimeler', el('div', {}, el('p', {}, el('span', { class: 'spinner' }), ' Yapay zeka bu bölümü tarıyor…')));
+  try {
+    const d = await hardWords(text, { known: [...vocabKeys()].slice(0, 60) });
+    const list = d.kelimeler || [];
+    showModal('Zor kelimeler', el('div', { class: 'list-lines' },
+      list.length ? null : el('p', {}, 'Belirgin zor kelime bulunamadı.'),
+      ...list.map(k => el('button', {
+        class: 'vrow', style: 'text-align:left',
+        onclick: () => { closeModal(); openWord(k.lemma, '', 'kitap: ' + book.name); },
+      },
+        el('div', { class: 'main' },
+          el('div', { class: 'de' }, k.lemma),
+          el('div', { class: 'tr' }, k.tr || ''),
+          k.warum ? el('div', { class: 'src' }, k.warum) : null))),
+    ));
+  } catch (e) {
+    showModal('Zor kelimeler', el('div', { class: 'err-box' }, e.message));
+  }
 }
 
 /* ---------------------------- görünüm ayarları ---------------------------- */
 function readerOptionsDialog() {
   const s = () => getSettings();
   const wrap = el('div', {});
-
   const group = (label, ...kids) => el('div', {},
     el('div', { class: 'opt-label' }, label), el('div', { class: 'opt-row' }, ...kids));
-
+  const refresh = () => wrap.querySelectorAll('.opt').forEach(x => x.dispatchEvent(new CustomEvent('refresh')));
   const mk = (text, isOn, onPick) => {
     const b = el('button', { class: 'opt' + (isOn() ? ' on' : '') }, text);
-    b.addEventListener('click', () => {
-      onPick();
-      applyReaderStyle();
-      wrap.querySelectorAll('.opt').forEach(x => x.dispatchEvent(new CustomEvent('refresh')));
-      if (book) renderChapter(chapter, window.scrollY);
-    });
+    b.addEventListener('click', () => { onPick(); applyReaderStyle(true); refresh(); });
     b.addEventListener('refresh', () => b.classList.toggle('on', isOn()));
     return b;
   };
-
   wrap.append(
     group('Tema',
       mk('📜 Kağıt', () => s().readerTheme === 'sepia', () => setSettings({ readerTheme: 'sepia' })),
       mk('☀️ Açık', () => s().readerTheme === 'light', () => setSettings({ readerTheme: 'light' })),
       mk('🌙 Gece', () => s().readerTheme === 'dark', () => setSettings({ readerTheme: 'dark' }))),
     group('Yazı boyutu',
-      el('button', { class: 'opt', onclick: () => { setSettings({ fontSize: Math.max(15, s().fontSize - 1) }); applyReaderStyle(); } }, 'A−'),
-      el('button', { class: 'opt', onclick: () => { setSettings({ fontSize: Math.min(30, s().fontSize + 1) }); applyReaderStyle(); } }, 'A+')),
+      el('button', { class: 'opt', onclick: () => { setSettings({ fontSize: Math.max(15, s().fontSize - 1) }); applyReaderStyle(true); } }, 'A−'),
+      el('button', { class: 'opt', onclick: () => { setSettings({ fontSize: Math.min(30, s().fontSize + 1) }); applyReaderStyle(true); } }, 'A+')),
     group('Yazı tipi',
       mk('Kitap (serif)', () => s().readerFont === 'serif', () => setSettings({ readerFont: 'serif' })),
       mk('Ekran (sans)', () => s().readerFont === 'sans', () => setSettings({ readerFont: 'sans' }))),
     group('Satır aralığı',
-      mk('Sık', () => s().lineHeight <= 1.6, () => setSettings({ lineHeight: 1.6 })),
-      mk('Normal', () => s().lineHeight > 1.6 && s().lineHeight < 2, () => setSettings({ lineHeight: 1.78 })),
+      mk('Sık', () => s().lineHeight <= 1.6, () => setSettings({ lineHeight: 1.55 })),
+      mk('Normal', () => s().lineHeight > 1.6 && s().lineHeight < 2, () => setSettings({ lineHeight: 1.75 })),
       mk('Geniş', () => s().lineHeight >= 2, () => setSettings({ lineHeight: 2.05 }))),
     group('Hizalama',
       mk('İki yana yasla', () => !!s().justify, () => setSettings({ justify: true })),
@@ -351,6 +473,70 @@ function readerOptionsDialog() {
     el('button', { class: 'btn primary', style: 'width:100%;margin-top:4px', onclick: closeModal }, 'Tamam'),
   );
   showModal('Okuma görünümü', wrap);
+}
+
+/* -------------------------------- hareketler ------------------------------ */
+function hasSelection() {
+  const s = window.getSelection();
+  return s && !s.isCollapsed && String(s).trim().length > 1;
+}
+
+function initGestures() {
+  const paper = paperEl();
+
+  // kenara dokunarak sayfa çevir (kelimeye dokunmak hariç)
+  paper.addEventListener('click', (e) => {
+    if (!book || e.target.closest('.w') || hasSelection()) return;
+    const r = paper.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    if (x < r.width * 0.32) prevPage();
+    else if (x > r.width * 0.68) nextPage();
+  });
+
+  // kaydırarak sayfa çevir
+  let x0 = null, y0 = null, t0 = 0;
+  paper.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  paper.addEventListener('touchend', (e) => {
+    if (x0 === null || !book || hasSelection()) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    x0 = null;
+    if (Date.now() - t0 > 900) return;                 // uzun basma = seçim
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    if (dx < 0) nextPage(); else prevPage();
+  }, { passive: true });
+
+  document.addEventListener('keydown', (e) => {
+    if (!book || !$('#view-book').classList.contains('active')) return;
+    if (!$('#modal-backdrop').hidden || !$('#word-sheet').hidden) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextPage(); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevPage(); }
+  });
+
+  // ekran döndüğünde / boyut değiştiğinde sayfaları yeniden hesapla
+  let rT = null;
+  const onResize = () => { clearTimeout(rT); rT = setTimeout(relayout, 150); };
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  if ('ResizeObserver' in window) new ResizeObserver(onResize).observe(paper);
+
+  // birden fazla kelime seçilince "Seçimi açıkla"
+  const selBtn = $('#sel-btn');
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    const txt = sel ? String(sel).trim() : '';
+    const anchor = sel && sel.anchorNode && (sel.anchorNode.parentElement);
+    if (txt.split(/\s+/).length >= 2 && txt.length < 200 && anchor && anchor.closest('#book-flow')) {
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      selBtn.hidden = false;
+      selBtn.style.left = Math.min(Math.max(8, r.left), window.innerWidth - 150) + 'px';
+      selBtn.style.top = Math.max(60, r.top - 46) + 'px';
+      selBtn.onclick = () => { selBtn.hidden = true; openPhrase(txt); sel.removeAllRanges(); };
+    } else selBtn.hidden = true;
+  });
 }
 
 /* -------------------------------- kurulum --------------------------------- */
@@ -363,28 +549,20 @@ export function initBook() {
     e.target.value = '';
   });
   $('#btn-book-lib').addEventListener('click', libraryDialog);
-  $('#btn-prev-page').addEventListener('click', () => renderChapter(chapter - 1));
-  $('#btn-next-page').addEventListener('click', () => renderChapter(chapter + 1));
-  $('#btn-book-hardwords').addEventListener('click', () => {
-    if (!book) return toast('Önce bir kitap aç.');
-    showHardWords(book.chapters[chapter].blocks.map(b => b.text).join(' '), 'kitap: ' + book.name);
-  });
   $('#btn-reader-opts').addEventListener('click', readerOptionsDialog);
+  $('#btn-toc').addEventListener('click', tocDialog);
+  $('#btn-hardwords').addEventListener('click', showHardWords);
+  $('#btn-prev').addEventListener('click', prevPage);
+  $('#btn-next').addEventListener('click', nextPage);
 
-  attachWordTaps($('#book-content'), contextOf, 'kitap');
-  window.addEventListener('scroll', () => {
-    if (book && $('#view-book').classList.contains('active')) { savePos(); updateProgress(); }
-  }, { passive: true });
+  attachWordTaps(flowEl(), contextOf, 'kitap');
+  initGestures();
+  document.addEventListener('vocab-changed', () => {
+    if (!book) return;
+    const known = vocabKeys();
+    flowEl().querySelectorAll('.w').forEach(w => w.classList.toggle('saved', known.has(normWord(w.textContent))));
+  });
 
-  // son okunan kitabı hatırlat
-  listBooks().then(bs => {
-    if (!bs.length) return;
-    const b = bs[0];
-    $('#book-content').replaceChildren(el('div', { class: 'empty-state' },
-      el('div', { class: 'big' }, '📖'),
-      el('p', {}, 'Kaldığın yerden devam edebilirsin.'),
-      el('button', { class: 'btn primary', onclick: () => useBook(b) }, '▶︎ ' + b.name),
-      el('p', { class: 'hint', style: 'margin-top:18px' }, 'Ya da yukarıdan yeni bir PDF / EPUB / TXT yükle.'),
-    ));
-  }).catch(() => {});
+  // en son okunan kitabı aç
+  listBooks().then(bs => { if (bs.length) useBook(bs[0]); }).catch(() => {});
 }
