@@ -1,7 +1,7 @@
 // Kelime paneli (alttan açılan sayfa)
 import { $, el, speak, toast, tokenize } from './util.js';
 import { lookupWord, translateSentence, explainPhrase, AIError } from './ai.js';
-import { findVocab, saveWord, removeWord, getSettings } from './store.js';
+import { findVocab, saveWord, removeWord, getSettings, bumpStat } from './store.js';
 
 const sheet = () => $('#word-sheet');
 const backdrop = () => $('#sheet-backdrop');
@@ -108,6 +108,7 @@ function render(d, word, context, source) {
         source, context,
       });
       saveBtn.textContent = '⭐';
+      bumpStat('saves');
       toast('⭐ Kelime defterine eklendi');
     }
     document.dispatchEvent(new CustomEvent('vocab-changed'));
@@ -177,6 +178,7 @@ export async function openWord(word, context = '', source = '', force = false) {
   if (getSettings().autoSpeak) speak(word);
   try {
     const d = await lookupWord(word, context, { force });
+    if (!d._cached) bumpStat('lookups');
     if (current && current.word === word) render(d, word, context, source);
   } catch (e) {
     body().replaceChildren(

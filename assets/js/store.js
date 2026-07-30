@@ -96,6 +96,37 @@ export function importVocab(list) {
   return n;
 }
 
+/* -------------------------------- istatistik ------------------------------ */
+const STATS_KEY = 'dl.stats';
+let stats = null;
+
+export const todayKey = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export function getStats() {
+  if (!stats) {
+    try { stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}'); } catch { stats = {}; }
+    if (!stats || typeof stats !== 'object') stats = {};
+    if (!stats.days) stats.days = {};
+  }
+  return stats;
+}
+
+/** Bugünün sayacını artırır: pages | secs | lookups | saves | reviews | correct */
+export function bumpStat(field, by = 1) {
+  const s = getStats();
+  const k = todayKey();
+  const d = s.days[k] || (s.days[k] = { pages: 0, secs: 0, lookups: 0, saves: 0, reviews: 0, correct: 0 });
+  d[field] = (d[field] || 0) + by;
+  if (!s.firstDay) s.firstDay = k;
+  const keys = Object.keys(s.days);
+  if (keys.length > 400) keys.sort().slice(0, keys.length - 400).forEach(x => delete s.days[x]);
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch { /* dolu ise yoksay */ }
+  document.dispatchEvent(new CustomEvent('stats-changed'));
+}
+
+export const dayStat = (key) => getStats().days[key] || { pages: 0, secs: 0, lookups: 0, saves: 0, reviews: 0, correct: 0 };
+
 /* ------------------------------ AI önbelleği ------------------------------ */
 let cache = null;
 function loadCache() {

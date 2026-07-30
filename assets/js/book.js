@@ -1,9 +1,10 @@
 // Okuyucu: PDF / EPUB / TXT → sayfa sayfa çevrilen kitap + kelimeye dokunma
 import { $, el, toast, wordSpans, sentenceAround, hash, normWord } from './util.js';
 import { attachWordTaps, openWord, openPhrase } from './word.js';
-import { getSettings, setSettings, vocabKeys, putBook, getBook, listBooks, deleteBook } from './store.js';
+import { getSettings, setSettings, vocabKeys, putBook, getBook, listBooks, deleteBook, bumpStat } from './store.js';
 import { showModal, closeModal } from './ui.js';
 import { hardWords } from './ai.js';
+import { setReading } from './stats.js';
 
 const PDFJS_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs';
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs';
@@ -229,8 +230,8 @@ function updateChrome() {
 export function nextPage() {
   if (!book) return;
   wantPage = null;
-  if (page < pages - 1) return showPage(page + 1);
-  if (chapter < book.chapters.length - 1) return renderChapter(chapter + 1, 0);
+  if (page < pages - 1) { bumpStat('pages'); return showPage(page + 1); }
+  if (chapter < book.chapters.length - 1) { bumpStat('pages'); return renderChapter(chapter + 1, 0); }
   toast('Kitabın sonu 🎉');
 }
 export function prevPage() {
@@ -321,7 +322,10 @@ function useBook(b) {
   $('#page-foot').hidden = false;
   $('#reader-bar').hidden = false;
   $('#book-progress').hidden = false;
-  $('#top-title').textContent = b.name.replace(/\.(pdf|epub|txt)$/i, '');
+  const title = b.name.replace(/\.(pdf|epub|txt)$/i, '');
+  $('#top-title').textContent = title;
+  $('#top-title').dataset.book = title;
+  setReading(true);
   // çubuklar görünür olduktan sonra yerleşim otursun diye iki kare bekle
   requestAnimationFrame(() => requestAnimationFrame(() =>
     renderChapter(b.pos?.chapter || 0, b.pos?.page || 0)));

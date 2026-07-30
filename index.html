@@ -62,9 +62,16 @@
 
   <!-- ================= KELİMELERİM ================= -->
   <section class="view" id="view-vocab" data-view="vocab">
+    <div class="study-cta">
+      <button class="btn primary" id="btn-flash">🎴 Tekrara başla</button>
+    </div>
     <div class="toolbar wrap">
       <input type="search" id="vocab-search" placeholder="Kelime ara…" class="grow">
-      <button class="chip" id="btn-flash">🎴 Kart çalışması</button>
+      <select class="select" id="vocab-sort" aria-label="Sırala">
+        <option value="due">Tekrar sırasına göre</option>
+        <option value="new">Önce yeni eklenen</option>
+        <option value="az">A → Z</option>
+      </select>
       <button class="chip" id="btn-vocab-export">⬇️ Dışa aktar</button>
       <label class="chip file-btn">⬆️ İçe aktar<input type="file" id="vocab-import" accept="application/json,.json" hidden></label>
     </div>
@@ -72,12 +79,28 @@
     <div id="vocab-list" class="vocab-list"></div>
   </section>
 
+  <!-- ================= İSTATİSTİK ================= -->
+  <section class="view" id="view-stats" data-view="stats">
+    <div id="stats-body" class="stats-body"></div>
+  </section>
+
 </main>
 
 <nav class="tabbar">
   <button class="tab active" data-goto="book"><span>📖</span>Oku</button>
   <button class="tab" data-goto="vocab"><span>⭐</span>Kelimelerim</button>
+  <button class="tab" data-goto="stats"><span>📊</span>İstatistik</button>
 </nav>
+
+<!-- tekrar çalışması (tam ekran) -->
+<section class="study" id="study" hidden>
+  <header class="study-top">
+    <button class="icon-btn" id="study-close" aria-label="Kapat">✕</button>
+    <div class="study-prog"><span id="study-prog-bar"></span></div>
+    <div class="study-count" id="study-count"></div>
+  </header>
+  <div class="study-body" id="study-body"></div>
+</section>
 
 <!-- kelime paneli -->
 <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>

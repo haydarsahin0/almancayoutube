@@ -70,12 +70,28 @@ Metin gerçek bir kitap gibi dizilir: serif yazı tipi, iki yana yaslı satırla
 bölüm başında büyük harf (drop cap), ortalanmış bölüm başlıkları, üstte kitap adı ve sayfa numarası,
 altta ilerleme çubuğu.
 
-### Kelimelerim
+### Kelimelerim (aralıklı tekrar)
 
-- Panelde **⭐** dediğin kelimeler burada birikir.
-- **🎴 Kart çalışması** ile tekrar edersin (bilmediklerin öne gelir).
+- Panelde **⭐** dediğin kelimeler burada birikir; kitapta işaretli görünürler.
+- **🎴 Tekrara başla** → kart çalışması: üstte kelime, altında anlamı **bulanık**.
+  Dokununca netleşir, sonra **😕 Bilmiyorum / 🙂 Biliyorum** dersin.
+- **ℹ️ Bu kelime hakkında detay** ile tam açıklama panelini (eş anlamlılar, örnek
+  cümleler, fiil çekimleri) çalışma sırasında da açabilirsin.
+- Aralıklı tekrar (Leitner): bildiğin kelime **1 → 3 → 7 → 16 → 35 → 90 gün** sonra
+  tekrar karşına çıkar; bilemediğin başa döner ve **aynı turda** tekrar sorulur.
+  Böylece kelimeyi unutmadan hemen önce tekrar görürsün.
+- Liste her kelimenin seviyesini (Yeni / Öğreniliyor / Biliniyor / Ustalaşıldı) ve
+  bir sonraki tekrar zamanını gösterir; sıralamayı değiştirebilirsin.
 - **⬇️ Dışa aktar / ⬆️ İçe aktar** ile kelime listeni yedekleyebilirsin.
-- Kaydettiğin kelimeler kitapta işaretli görünür.
+
+### İstatistik
+
+- Bugünün özeti: 🔥 günlük seri, okunan sayfa, okuma süresi, sorulan kelime.
+- **Bugün tekrar edilmesi gereken kelime sayısı** ve oradan doğrudan çalışmaya başlama.
+- **Son 14 gün** çubuk grafiği — sayfa / dakika / kelime arasında geçiş yapabilirsin.
+- **Kelime ustalığı** dağılımı: kaç kelime hangi seviyede.
+- Toplamlar: kitap, sayfa, okuma süresi, sorulan kelime, kelime defteri, tekrar, en uzun seri.
+- Okuma süresi yalnızca kitap ekranı açıkken ve son 2,5 dakikada ekrana dokunmuşsan sayılır.
 
 ---
 
@@ -97,6 +113,8 @@ assets/css/app.css      tüm stiller
 assets/js/main.js       giriş, sekmeler, ayarlar
 assets/js/ai.js         OpenAI istekleri ve istemler
 assets/js/book.js       PDF / EPUB / TXT okuyucu ve sayfalama
+assets/js/srs.js        aralıklı tekrar (Leitner kutuları)
+assets/js/stats.js      okuma takibi ve istatistik sayfası
 assets/js/word.js       kelime paneli
 assets/js/vocab.js      kelime defteri ve kartlar
 assets/js/store.js      ayarlar, kayıtlar, kitaplık
