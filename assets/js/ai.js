@@ -229,6 +229,48 @@ JSON: {"tr":"çeviri", "not":"kısa dilbilgisi notu (Türkçe)"}` },
   return out;
 }
 
+/**
+ * Kelime defterinden seçilen kelimelerle, seviyeye uygun tek parça bir metin yazdırır.
+ * Dönen "benutzt" listesi, her kelimenin metinde geçtiği çekimli hâlini verir —
+ * altı çizili göstermek için gerekli.
+ */
+export async function storyWithWords(words, { seed = 0, force = false } = {}) {
+  const s = getSettings();
+  const list = words.map(w => (w.artikel ? w.artikel + ' ' : '') + (w.lemma || w.word));
+  const key = `story:${s.model}:${s.level}:${list.join('|')}:${seed}`;
+  if (!force) {
+    const c = cacheGet(key);
+    if (c) return { ...c, _cached: true };
+  }
+  const out = parseJSON(await chat([
+    { role: 'system', content: SYSTEM(s.level) },
+    {
+      role: 'user', content: `Öğrenciye kendi kelimelerini bağlam içinde göstermek istiyorum.
+Aşağıdaki kelimelerin HEPSİNİ kullanarak ${s.level} seviyesinde, tek parça, akıcı ve anlamlı bir Almanca metin yaz.
+
+KELİMELER:
+${list.map((w, i) => `${i + 1}. ${w}`).join('\n')}
+
+Kurallar:
+- 90-140 kelimelik, günlük hayattan doğal bir sahne ya da kısa hikâye. En fazla 2 paragraf.
+- Verilen kelimelerin hepsi metinde geçsin; gerekiyorsa çekimli hâlleriyle kullan
+  (isimlerde çoğul/hâl, fiillerde zaman/şahıs çekimi serbest).
+- Kelimeleri zorlama biçimde arka arkaya dizme; her biri anlamlı bir cümlede geçsin.
+- Verilen kelimeler dışında ${s.level} seviyesini aşan kelime kullanma; cümleler kısa ve net olsun.
+- Metin kendi içinde bir bütün olsun (başı ve sonu olsun), sözlük cümleleri listesi gibi durmasın.
+
+JSON döndür:
+{
+  "titel": "kısa Almanca başlık",
+  "text": "metnin kendisi (paragraflar arasında \\n\\n)",
+  "tr": "metnin doğal Türkçe çevirisi",
+  "benutzt": [{"wort":"verilen kelime (listedeki hâliyle)", "form":"metinde geçtiği tam hâli", "satz":"geçtiği cümle"}]
+}` },
+  ], { maxTokens: 1500, temperature: 0.8 }));
+  cacheSet(key, out);
+  return out;
+}
+
 export async function hardWords(text, { known = [] } = {}) {
   const s = getSettings();
   const body = text.slice(0, 6000);

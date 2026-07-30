@@ -572,3 +572,45 @@ textarea{min-height:120px;line-height:1.5}
   font-size:10.5px;font-weight:700;letter-spacing:.02em;vertical-align:2px;
   color:#7fd6a2;border:1px solid rgba(127,214,162,.45);background:rgba(127,214,162,.08);
 }
+
+/* ---------- hikâye modu ---------- */
+.story .study-top{padding:6px 8px 8px}
+.story-head{flex:1;text-align:center;font-size:13px;color:var(--tx-dim);font-weight:600}
+.story-body{display:block;justify-content:flex-start;padding:0 10px calc(12px + env(safe-area-inset-bottom))}
+.story-paper{
+  display:block;height:auto;max-width:44em;margin:0 auto 14px;
+  border-radius:10px;padding:22px clamp(18px,5vw,34px) 26px;
+  overflow:visible;contain:none;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.story-title{
+  text-align:center;font-size:1.05em;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;margin:0 0 .2em;color:var(--ink);
+}
+.story-title::after{content:"❦";display:block;font-size:.8em;letter-spacing:0;margin:.4em 0 1em;color:var(--ink-dim);opacity:.65}
+.story-paper p{margin:0 0 .9em;text-align:left;text-indent:0;line-height:1.85}
+/* kullanıcının kelimeleri: altı çizili ve vurgulu */
+.story-paper .w.hl{
+  background:var(--mark);border-bottom:2px solid var(--mark-line);
+  font-weight:700;border-radius:3px;padding:0 1px;
+}
+.story-tr{border-top:1px solid var(--rule);margin-top:1.4em;padding-top:1em}
+.story-tr h4{
+  margin:0 0 .5em;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-dim);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+.story-tr p{color:var(--ink-dim);font-size:.92em;line-height:1.7}
+.story-words{
+  max-width:44em;margin:0 auto;background:var(--bg-2);border:1px solid var(--line);
+  border-radius:14px;padding:13px 14px;
+}
+.story-words .chips{padding:4px 0 6px}
+.story-words .chip{font-size:13.5px}
+.story-loading{text-align:center;padding:60px 20px;color:var(--tx-dim)}
+.story-loading .big{font-size:46px;margin-bottom:10px}
+.story-bar{
+  flex:none;display:flex;gap:8px;padding:8px 12px calc(10px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);background:var(--bg);
+}
+.story-bar .btn{min-height:46px;font-size:13.5px}
+.story-bar .btn.on{border-color:var(--accent);color:var(--accent)}

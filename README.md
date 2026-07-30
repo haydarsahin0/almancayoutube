@@ -98,6 +98,13 @@ altta ilerleme çubuğu.
   Böylece kelimeyi unutmadan hemen önce tekrar görürsün.
 - Liste her kelimenin öğrenme durumunu (Yeni / Öğreniliyor / Biliniyor / Ustalaşıldı),
   dil seviyesini (A1…C2) ve bir sonraki tekrar zamanını gösterir; sıralamayı değiştirebilirsin.
+- **✍️ Hikâye modu**: kaydettiğin kelimelerden birkaçını alıp seviyene uygun,
+  akıcı tek bir Almanca metin yazar; senin kelimelerin metinde **altı çizili** görünür.
+  "🔄 Yeni metin" dedikçe **başka kelimelerle** yeni bir metin gelir — defterindeki
+  kelimeler sırayla dolaşılır, en az geçenler önce seçilir.
+  Metindeki **herhangi bir kelimeye dokunabilirsin**; "🇹🇷 Çeviri" ile Türkçesini
+  açar, "🔊 Dinle" ile metni dinlersin. Son metin cihazda saklanır, tekrar açınca
+  yeniden ücret çıkmaz.
 - **⬇️ Dışa aktar / ⬆️ İçe aktar** ile kelime listeni yedekleyebilirsin.
 
 ### İstatistik
@@ -142,6 +149,7 @@ assets/js/main.js       giriş, sekmeler, ayarlar
 assets/js/ai.js         OpenAI istekleri ve istemler
 assets/js/book.js       PDF / EPUB / TXT okuyucu ve sayfalama
 assets/js/srs.js        aralıklı tekrar (Leitner kutuları)
+assets/js/story.js      hikâye modu (kelimeleri metin içinde gösterme)
 assets/js/stats.js      okuma takibi ve istatistik sayfası
 assets/js/word.js       kelime paneli
 assets/js/vocab.js      kelime defteri ve kartlar

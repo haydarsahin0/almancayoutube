@@ -68,6 +68,7 @@
         <button class="btn grow" id="btn-free">♾️ Serbest tekrar</button>
         <button class="btn grow" id="btn-syn-round">🔁 Eş anlamlı turu</button>
       </div>
+      <button class="btn" id="btn-story">✍️ Hikâye modu · kelimelerini metin içinde oku</button>
     </div>
     <div class="toolbar wrap">
       <input type="search" id="vocab-search" placeholder="Kelime ara…" class="grow">
@@ -104,6 +105,21 @@
     <div class="study-count" id="study-count"></div>
   </header>
   <div class="study-body" id="study-body"></div>
+</section>
+
+<!-- hikâye modu (tam ekran) -->
+<section class="study story" id="story" hidden>
+  <header class="study-top">
+    <button class="icon-btn" id="story-close" aria-label="Kapat">✕</button>
+    <div class="story-head">✍️ Hikâye modu</div>
+    <button class="icon-btn" id="btn-story-new" aria-label="Yeni metin" title="Yeni metin">🔄</button>
+  </header>
+  <div class="study-body story-body" id="story-body"></div>
+  <div class="story-bar">
+    <button class="btn grow" id="btn-story-tr">🇹🇷 Çeviri</button>
+    <button class="btn grow" id="btn-story-speak">🔊 Dinle</button>
+    <button class="btn primary grow" id="btn-story-new2">🔄 Yeni metin</button>
+  </div>
 </section>
 
 <!-- kelime paneli -->

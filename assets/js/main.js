@@ -7,6 +7,7 @@ import { initWordSheet } from './word.js';
 import { initBook, applyReaderStyle } from './book.js';
 import { initVocab } from './vocab.js';
 import { initStats, renderStats } from './stats.js';
+import { initStory } from './story.js';
 
 /* --------------------------------- sekmeler -------------------------------- */
 function goto(name) {
@@ -128,6 +129,7 @@ function boot() {
   initBook();
   initVocab();
   initStats();
+  initStory();
 
   $$('.tab').forEach(t => t.addEventListener('click', () => goto(t.dataset.goto)));
   $('#btn-settings').addEventListener('click', settingsDialog);

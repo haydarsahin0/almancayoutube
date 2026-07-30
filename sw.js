@@ -1,11 +1,11 @@
 // Basit çevrimdışı desteği: kendi dosyalarımızı önbelleğe al, ağı öncelikli kullan.
-const CACHE = 'almanca-v3';
+const CACHE = 'almanca-v4';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './assets/css/app.css',
   './assets/js/main.js', './assets/js/util.js', './assets/js/store.js', './assets/js/ai.js',
   './assets/js/ui.js', './assets/js/word.js', './assets/js/book.js', './assets/js/vocab.js',
-  './assets/js/srs.js', './assets/js/stats.js',
+  './assets/js/srs.js', './assets/js/stats.js', './assets/js/story.js',
 ];
 
 self.addEventListener('install', (e) => {
