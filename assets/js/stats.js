@@ -182,7 +182,9 @@ export async function renderStats() {
       el('div', { class: 'due-t' }, due
         ? 'bugün tekrar etmen gerekiyor'
         : (next ? `sıradaki tekrar ${dueText({ due: next })}` : 'önce kitapta kelime kaydet'))),
-    due ? el('button', { class: 'btn primary', onclick: () => document.dispatchEvent(new CustomEvent('start-study')) }, '🎴 Başla') : null,
+    due
+      ? el('button', { class: 'btn primary', onclick: () => document.dispatchEvent(new CustomEvent('start-study')) }, '🎴 Başla')
+      : (vocab.length ? el('button', { class: 'btn', onclick: () => document.dispatchEvent(new CustomEvent('start-free')) }, '♾️ Serbest') : null),
   );
 
   box.replaceChildren(

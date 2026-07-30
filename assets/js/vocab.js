@@ -1,6 +1,6 @@
 // Kelime defteri + aralıklı tekrar çalışması
 import { $, el, speak, toast } from './util.js';
-import { allVocab, removeWord, importVocab, bumpStat } from './store.js';
+import { allVocab, removeWord, importVocab, bumpStat, updateWord } from './store.js';
 import { openWord, levelBadge } from './word.js';
 import { dueQueue, dueCount, answer as srsAnswer, levelOf, dueText, normalize, nextDueAt } from './srs.js';
 
@@ -8,7 +8,8 @@ let filter = '';
 let sortBy = 'due';   // due | new | az
 
 /* ------------------------------ kelime listesi ---------------------------- */
-export function renderVocab() {
+/** Ekranda görünen liste: arama kutusuna ve sıralamaya göre süzülmüş kelimeler */
+function filteredList() {
   let list = allVocab().map(normalize);
   if (filter) {
     const f = filter.toLowerCase();
@@ -17,6 +18,11 @@ export function renderVocab() {
   if (sortBy === 'due') list.sort((a, b) => a.due - b.due);
   else if (sortBy === 'new') list.sort((a, b) => (b.added || 0) - (a.added || 0));
   else list.sort((a, b) => (a.lemma || '').localeCompare(b.lemma || '', 'de'));
+  return list;
+}
+
+export function renderVocab() {
+  const list = filteredList();
 
   const total = allVocab().length;
   const due = dueCount();
@@ -51,6 +57,10 @@ export function renderVocab() {
 
 /* -------------------------------- çalışma --------------------------------- */
 let queue = [], idx = 0, revealed = false, session = { done: 0, correct: 0 };
+let mode = 'srs';          // 'srs' = vakti gelenler | 'free' = serbest tekrar
+let freeRound = 1;
+
+const shuffle = (a) => a.map(x => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
 
 const studyEl = () => $('#study');
 
@@ -62,6 +72,7 @@ function closeStudy() {
 }
 
 export function startStudy() {
+  mode = 'srs';
   queue = dueQueue(20);
   if (!queue.length) {
     const next = nextDueAt();
@@ -72,20 +83,52 @@ export function startStudy() {
   draw();
 }
 
+/** Serbest tekrar: kayıtlı kelimelerin tamamı (ya da aramayla süzdüğün liste),
+    sınırsız tur. Tekrar takvimini ileri atmaz — yalnızca bilemediğin kelimeyi
+    öne çeker, böylece aralıklı tekrar planın bozulmaz. */
+export function startFree() {
+  const pool = filteredList();
+  if (!pool.length) {
+    return toast(filter ? 'Bu aramaya uyan kelime yok.' : 'Önce kitapta bir kelimeye dokunup ⭐ ile kaydet.');
+  }
+  mode = 'free'; freeRound = 1;
+  queue = shuffle(pool);
+  idx = 0; revealed = false; session = { done: 0, correct: 0 };
+  studyEl().hidden = false;
+  draw();
+}
+
 function drawFinish() {
-  const left = dueCount();
+  const oran = session.done ? Math.round((session.correct / session.done) * 100) : 0;
   $('#study-count').textContent = '';
   $('#study-prog-bar').style.width = '100%';
+
+  if (mode === 'free') {
+    const nextRound = () => { freeRound++; queue = shuffle(filteredList()); idx = 0; revealed = false; draw(); };
+    return $('#study-body').replaceChildren(el('div', { class: 'study-done' },
+      el('div', { class: 'big' }, '♾️'),
+      el('h2', {}, `${freeRound}. tur bitti`),
+      el('p', {}, `${session.done} kart · %${oran} bildin`),
+      el('p', { class: 'hint' }, 'Serbest tekrar sınırsız: istediğin kadar tur atabilirsin. ' +
+        'Bu mod tekrar takvimini ileri atmaz, sadece bilemediklerini öne çeker.'),
+      el('div', { style: 'display:flex;gap:8px;margin-top:16px;width:100%' },
+        el('button', { class: 'btn primary grow', onclick: nextRound }, '🔀 Yeni tur'),
+        el('button', { class: 'btn grow', onclick: closeStudy }, 'Bitir'))));
+  }
+
+  const left = dueCount();
   $('#study-body').replaceChildren(el('div', { class: 'study-done' },
     el('div', { class: 'big' }, '🎉'),
     el('h2', {}, 'Tur bitti'),
-    el('p', {}, `${session.done} kart çalıştın · ${session.done ? Math.round((session.correct / session.done) * 100) : 0}% bildin`),
+    el('p', {}, `${session.done} kart çalıştın · %${oran} bildin`),
     el('p', { class: 'hint' }, left
       ? `${left} kelime daha bugün tekrar edilmeyi bekliyor.`
       : 'Bugünlük tekrar bitti. Yarın yeni kartlar hazır olacak.'),
     el('div', { style: 'display:flex;gap:8px;margin-top:16px;width:100%' },
       left ? el('button', { class: 'btn primary grow', onclick: startStudy }, 'Devam et') : null,
-      el('button', { class: 'btn grow', onclick: closeStudy }, 'Bitir')),
+      el('button', { class: 'btn grow', onclick: () => { if (allVocab().length) startFree(); else closeStudy(); } },
+        allVocab().length ? '♾️ Serbest devam' : 'Bitir'),
+      left ? null : el('button', { class: 'btn grow', onclick: closeStudy }, 'Bitir')),
   ));
 }
 
@@ -121,7 +164,9 @@ function draw() {
 
   $('#study-body').replaceChildren(
     el('div', { class: 'study-card' },
-      el('div', { class: 'lvl' }, el('span', { class: 'sw', style: `background:${lv.color}` }), lv.label,
+      el('div', { class: 'lvl' },
+        mode === 'free' ? el('span', { class: 'mode-tag' }, '♾️ serbest') : null,
+        el('span', { class: 'sw', style: `background:${lv.color}` }), lv.label,
         v.reps ? ` · ${v.reps}. tekrar` : ' · ilk kez'),
       el('div', { class: 'front' }, front,
         el('button', { class: 'mini', style: 'margin-left:10px', onclick: (e) => { e.stopPropagation(); speak(front); } }, '🔊')),
@@ -138,9 +183,25 @@ function draw() {
   );
 }
 
+/** Serbest modda "bilmiyorum": kelimeyi öne çeker, kutusunu/tarihini ileri atmaz */
+function pullForward(v) {
+  const soon = Date.now() + 10 * 60 * 1000;
+  const due = Math.min(v.due || soon, soon);
+  const patch = { due, seen: (v.seen || 0) + 1 };
+  updateWord(v.lemma || v.word, patch);
+  return { ...v, ...patch };
+}
+
 function answerButtons(v) {
   const go = (known) => {
-    const updated = srsAnswer(v, known);   // güncel kutu/tarih bilgisiyle döner
+    let updated = v;
+    if (mode === 'srs') {
+      updated = srsAnswer(v, known);       // güncel kutu/tarih bilgisiyle döner
+    } else if (!known) {
+      updated = pullForward(v);            // serbest modda yalnızca öne çekilir
+    } else {
+      updateWord(v.lemma || v.word, { seen: (v.seen || 0) + 1 });
+    }
     bumpStat('reviews');
     if (known) bumpStat('correct');
     session.done++;
@@ -231,8 +292,10 @@ export function initVocab() {
   $('#btn-syn-round').addEventListener('click', startSynRound);
   $('#vocab-search').addEventListener('input', (e) => { filter = e.target.value; renderVocab(); });
   $('#btn-flash').addEventListener('click', startStudy);
+  $('#btn-free').addEventListener('click', startFree);
   $('#study-close').addEventListener('click', closeStudy);
   document.addEventListener('start-study', startStudy);
+  document.addEventListener('start-free', startFree);
   $('#vocab-sort').addEventListener('change', (e) => { sortBy = e.target.value; renderVocab(); });
 
   $('#btn-vocab-export').addEventListener('click', () => {

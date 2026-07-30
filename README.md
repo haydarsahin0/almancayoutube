@@ -79,8 +79,15 @@ altta ilerleme çubuğu.
 ### Kelimelerim (aralıklı tekrar)
 
 - Panelde **⭐** dediğin kelimeler burada birikir; kitapta işaretli görünürler.
-- **🎴 Tekrara başla** → kart çalışması: üstte kelime, altında anlamı **bulanık**.
-  Dokununca netleşir, sonra **😕 Bilmiyorum / 🙂 Biliyorum** dersin.
+- **🎴 Tekrara başla** → aralıklı tekrar: yalnızca vakti gelen kelimeler.
+  Kart açılır, üstte kelime, altında anlamı **bulanık**; dokununca netleşir,
+  sonra **😕 Bilmiyorum / 🙂 Biliyorum** dersin.
+- **♾️ Serbest tekrar** → sınırsız çalışma: kayıtlı kelimelerin **tamamı** karışık
+  sırayla gelir, tur bitince "🔀 Yeni tur" ile istediğin kadar devam edersin.
+  Vakti gelmiş olması gerekmez. **Tekrar takvimini ileri atmaz** — yani serbest
+  çalışman aralıklı tekrar planını bozmaz; sadece bilemediğin bir kelimeyi öne
+  çeker (10 dk sonraya) ki tekrar karşına çıksın.
+  Arama kutusuna bir şey yazdıysan serbest tekrar **sadece o kelimelerle** çalışır.
 - **ℹ️ Bu kelime hakkında detay** ile tam açıklama panelini (eş anlamlılar, örnek
   cümleler, fiil çekimleri) çalışma sırasında da açabilirsin.
 - Kartın açılan yüzünde kelimenin **eş anlamlıları** da seviyeleriyle görünür.

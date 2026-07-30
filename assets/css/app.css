@@ -340,8 +340,14 @@ textarea{min-height:120px;line-height:1.5}
 .study-done .big{font-size:52px}
 .study-done h2{margin:6px 0 4px;font-size:20px}
 .study-done p{margin:2px 0;color:var(--tx-dim);font-size:14px}
-.study-cta{padding:12px 12px 0;display:flex;gap:8px}
+.study-cta{padding:12px 12px 0;display:grid;gap:8px}
 .study-cta .btn{min-height:48px;font-size:14px}
+.study-cta-row{display:flex;gap:8px}
+.study-cta-row .btn{min-height:44px;font-size:13px}
+.mode-tag{
+  background:rgba(255,204,51,.14);border:1px solid rgba(255,204,51,.4);color:var(--accent);
+  border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:700;letter-spacing:.03em;
+}
 
 /* kartın açılan yüzündeki eş anlamlı satırı */
 .syn-mini{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
