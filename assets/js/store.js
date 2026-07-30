@@ -62,6 +62,7 @@ export function saveWord(entry) {
     word: entry.word, lemma: entry.lemma || entry.word,
     artikel: entry.artikel || '', wortart: entry.wortart || '', niveau: entry.niveau || '',
     tr: entry.tr || '', de: entry.de || '', example: entry.example || '',
+    syn: Array.isArray(entry.syn) ? entry.syn : (i >= 0 ? vocab[i].syn || [] : []),
     source: entry.source || '', context: entry.context || '',
     added: i >= 0 ? vocab[i].added : Date.now(),
     box: i >= 0 ? vocab[i].box : 0, seen: i >= 0 ? vocab[i].seen : 0,

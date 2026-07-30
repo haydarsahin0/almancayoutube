@@ -38,10 +38,16 @@ export function initWordSheet() {
 }
 
 function loading(title) {
+  const bar = $('#word-sheet-actions');
+  if (bar) { bar.hidden = true; bar.replaceChildren(); }
   body().replaceChildren(
-    el('div', { class: 'wh' }, el('div', { class: 'word' }, title)),
-    el('div', { class: 'tags' }, el('span', { class: 'tag' }, 'yapay zeka düşünüyor…')),
-    ...[1, 2, 3, 4, 5].map(i => el('div', { class: 'skeleton', style: `width:${[95, 80, 90, 60, 75][i - 1]}%` })),
+    el('header', { class: 'w-head' },
+      el('div', { class: 'w-title' }, el('span', { class: 'w-lemma' }, title)),
+      el('div', { class: 'w-chips' }, el('span', { class: 'chip-s' }, 'yapay zeka düşünüyor…'))),
+    el('div', { class: 'card' },
+      ...[95, 70, 88, 55].map(w => el('div', { class: 'skeleton', style: `width:${w}%` }))),
+    el('div', { class: 'card' },
+      ...[80, 92, 60].map(w => el('div', { class: 'skeleton', style: `width:${w}%` }))),
   );
 }
 
@@ -99,90 +105,160 @@ function block(title, ...kids) {
 function render(d, word, context, source) {
   const lemma = d.lemma || word;
   const artikel = (d.artikel || '').trim();
-  const saved = !!findVocab(lemma);
+  const full = (artikel ? artikel + ' ' : '') + lemma;
+  const gender = { der: 'm', die: 'f', das: 'n' }[artikel.toLowerCase()] || '';
 
-  const speakBtn = el('button', { class: 'mini', title: 'Seslendir' }, '🔊');
-  speakBtn.addEventListener('click', () => speak((artikel ? artikel + ' ' : '') + lemma));
+  // kayıtlı bir kelimeyi tekrar açtıysak kaydı tazele (eş anlamlılar, seviye…)
+  if (findVocab(lemma)) updateSaved(d, lemma, artikel, source, context);
 
-  const saveBtn = el('button', { class: 'mini', title: 'Kelime defterine ekle' }, saved ? '⭐' : '☆');
+  const nodes = [
+    // ---- başlık ----
+    el('header', { class: 'w-head' },
+      el('div', { class: 'w-title' },
+        artikel ? el('span', { class: `art art-${gender}` }, artikel) : null,
+        el('span', { class: 'w-lemma' }, lemma)),
+      d.wort && d.wort.toLowerCase() !== lemma.toLowerCase()
+        ? el('div', { class: 'w-form' }, 'metinde: ', el('b', {}, d.wort)) : null,
+      el('div', { class: 'w-chips' },
+        levelBadge(d.niveau),
+        d.wortart ? el('span', { class: 'chip-s hi' }, d.wortart) : null,
+        d.plural ? el('span', { class: 'chip-s' }, 'çoğul: ' + d.plural) : null,
+        d.haeufigkeit ? el('span', { class: 'chip-s' }, d.haeufigkeit) : null,
+        d.verb_info?.trennbar === true ? el('span', { class: 'chip-s' }, 'ayrılabilir') : null,
+        d.verb_info?.kasus ? el('span', { class: 'chip-s' }, d.verb_info.kasus) : null),
+    ),
+
+    // ---- anlam (en önemli kart) ----
+    (d.anlam_tr?.length || d.baglam_tr) ? el('div', { class: 'card card-lead' },
+      el('div', { class: 'lead-tr' }, (d.anlam_tr || []).join(' · ')),
+      d.baglam_tr ? el('div', { class: 'lead-ctx' }, '➜ bu cümlede: ' + d.baglam_tr) : null,
+    ) : null,
+
+    // ---- Almanca açıklama ----
+    d.erklaerung_de ? card('🇩🇪', `Almanca açıklama · ${getSettings().level}`,
+      el('div', { class: 'de-txt' }, d.erklaerung_de),
+      el('button', { class: 'row-play', title: 'Dinle', onclick: () => speak(d.erklaerung_de) }, '🔊'),
+    ) : null,
+
+    // ---- eş anlamlılar, seviyeye göre ----
+    d.synonyme?.length ? card('🔁', 'Yerine kullanabileceklerin',
+      el('div', { class: 'syn-list' }, ...sortByLevel(d.synonyme).map(s =>
+        el('button', { class: 'syn-row', onclick: () => openWord(s.wort, context, source) },
+          levelBadge(s.niveau, 'sm') || el('span', { class: 'cefr sm ghost' }, '–'),
+          el('span', { class: 'syn-main' },
+            el('b', {}, s.wort),
+            el('small', {}, [s.tr, s.hinweis].filter(Boolean).join(' — '))),
+          el('span', { class: 'syn-go' }, '›')))),
+      null, 'Basitten ileriye doğru sıralı — kendi seviyene uygun olanı seç.',
+    ) : null,
+
+    // ---- kelime ailesi ----
+    d.wortfamilie?.length ? card('🌳', 'Kelime ailesi · aynı kökten',
+      el('div', { class: 'fam-grid' }, ...d.wortfamilie.map(f =>
+        el('button', { class: 'fam-card', onclick: () => openWord(f.wort, '', source) },
+          el('span', { class: 'fam-h' }, el('b', {}, f.wort), levelBadge(f.niveau, 'sm')),
+          el('small', {}, [f.tr, f.wortart].filter(Boolean).join(' · '))))),
+      null, 'Bir tanesine dokunursan onu da öğretirim.',
+    ) : null,
+
+    // ---- örnek cümleler ----
+    d.beispiele?.length ? card('✍️', 'Örnek cümleler',
+      el('div', { class: 'ex-list' }, ...d.beispiele.map((b, i) =>
+        el('div', { class: 'ex-row' },
+          el('span', { class: 'ex-n' }, String(i + 1)),
+          el('div', { class: 'ex-body' },
+            el('div', { class: 'ex-de' }, b.de),
+            el('div', { class: 'ex-tr' }, b.tr)),
+          el('button', { class: 'row-play', title: 'Dinle', onclick: () => speak(b.de) }, '🔊')))),
+    ) : null,
+
+    // ---- dilbilgisi ----
+    d.verb_info && (d.verb_info.praesens_er || d.verb_info.perfekt) ? card('⚙️', 'Fiil çekimi',
+      el('div', { class: 'gram' },
+        gramRow('Präsens', d.verb_info.praesens_er),
+        gramRow('Präteritum', d.verb_info.praeteritum),
+        gramRow('Perfekt', d.verb_info.perfekt)),
+    ) : null,
+
+    d.form_erklaerung ? card('🔍', 'Metindeki hâli', el('div', { class: 'note' }, d.form_erklaerung)) : null,
+
+    // ---- zıt anlamlılar ----
+    d.gegenteil?.length ? card('↔️', 'Zıt anlamlıları',
+      el('div', { class: 'syn-list' }, ...d.gegenteil.map(s =>
+        el('button', { class: 'syn-row', onclick: () => openWord(s.wort, context, source) },
+          el('span', { class: 'syn-main' }, el('b', {}, s.wort), el('small', {}, s.tr || '')),
+          el('span', { class: 'syn-go' }, '›')))),
+    ) : null,
+
+    d.tipp ? el('div', { class: 'card card-tip' }, el('span', {}, '💡'), el('div', {}, d.tipp)) : null,
+
+    // ---- geçtiği cümle ----
+    context ? card('📖', 'Kitaptaki cümle', ctxBlock(context, d.wort || word)) : null,
+  ];
+
+  body().replaceChildren(...nodes.filter(Boolean));
+  renderActions(d, word, lemma, artikel, full, context, source);
+}
+
+/** Kaydedilmiş kelimenin bilgilerini güncel yanıtla tazeler */
+function updateSaved(d, lemma, artikel, source, context) {
+  saveWord({
+    word: d.wort || lemma, lemma, artikel, wortart: d.wortart || '', niveau: d.niveau || '',
+    tr: (d.anlam_tr || []).join(', '),
+    de: d.erklaerung_de || '',
+    example: d.beispiele?.[0] ? `${d.beispiele[0].de} — ${d.beispiele[0].tr}` : '',
+    syn: (d.synonyme || []).map(s => ({ wort: s.wort, tr: s.tr || '', niveau: s.niveau || '' })),
+    source, context,
+  });
+}
+
+const LEVEL_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+const sortByLevel = (list) => [...list].sort((a, b) =>
+  (LEVEL_ORDER[String(a.niveau).toUpperCase()] || 9) - (LEVEL_ORDER[String(b.niveau).toUpperCase()] || 9));
+
+/** Başlıklı içerik kartı */
+function card(icon, title, content, aside = null, foot = null) {
+  return el('section', { class: 'card' },
+    el('h4', { class: 'card-h' }, el('span', { class: 'card-i' }, icon), title),
+    el('div', { class: 'card-b' }, content, aside),
+    foot ? el('p', { class: 'card-f' }, foot) : null);
+}
+
+const gramRow = (label, value) => value
+  ? el('div', { class: 'gram-row' }, el('span', {}, label), el('b', {}, value))
+  : null;
+
+/** Panelin altındaki sabit eylem çubuğu */
+function renderActions(d, word, lemma, artikel, full, context, source) {
+  const bar = $('#word-sheet-actions');
+  if (!bar) return;
+  const saved = () => !!findVocab(lemma);
+
+  const saveBtn = el('button', { class: 'act' + (saved() ? ' on' : '') },
+    el('span', {}, saved() ? '⭐' : '☆'), saved() ? 'Kayıtlı' : 'Kaydet');
   saveBtn.addEventListener('click', () => {
-    if (findVocab(lemma)) { removeWord(lemma); saveBtn.textContent = '☆'; toast('Kelime defterinden çıkarıldı'); }
-    else {
-      saveWord({
-        word, lemma, artikel, wortart: d.wortart || '', niveau: d.niveau || '',
-        tr: (d.anlam_tr || []).join(', '),
-        de: d.erklaerung_de || '',
-        example: d.beispiele?.[0] ? `${d.beispiele[0].de} — ${d.beispiele[0].tr}` : '',
-        source, context,
-      });
-      saveBtn.textContent = '⭐';
+    if (saved()) {
+      removeWord(lemma);
+      saveBtn.classList.remove('on');
+      saveBtn.replaceChildren(el('span', {}, '☆'), document.createTextNode('Kaydet'));
+      toast('Kelime defterinden çıkarıldı');
+    } else {
+      updateSaved(d, lemma, artikel, source, context);
       bumpStat('saves');
-      toast('⭐ Kelime defterine eklendi');
+      saveBtn.classList.add('on');
+      saveBtn.replaceChildren(el('span', {}, '⭐'), document.createTextNode('Kayıtlı'));
+      toast('⭐ Kelime defterine eklendi · tekrarlarda karşına çıkacak');
     }
     document.dispatchEvent(new CustomEvent('vocab-changed'));
   });
 
-  const nodes = [
-    el('div', { class: 'wh' },
-      el('div', {},
-        el('div', { class: 'word' }, artikel ? el('span', { class: 'art' }, artikel + ' ') : null, lemma),
-        d.wort && d.wort.toLowerCase() !== lemma.toLowerCase()
-          ? el('div', { style: 'color:var(--tx-dim);font-size:13.5px;margin-top:2px' }, `metindeki hali: ${d.wort}`) : null,
-      ),
-      el('div', { class: 'acts' }, speakBtn, saveBtn),
-    ),
-    el('div', { class: 'tags' },
-      levelBadge(d.niveau),
-      d.wortart ? el('span', { class: 'tag hi' }, d.wortart) : null,
-      d.plural ? el('span', { class: 'tag' }, 'çoğul: ' + d.plural) : null,
-      d.haeufigkeit ? el('span', { class: 'tag' }, d.haeufigkeit) : null,
-      d.verb_info?.trennbar === true ? el('span', { class: 'tag' }, 'ayrılabilir fiil') : null,
-      d.verb_info?.kasus ? el('span', { class: 'tag' }, d.verb_info.kasus) : null,
-    ),
-    (d.anlam_tr?.length || d.baglam_tr) ? block('Türkçesi',
-      d.anlam_tr?.length ? el('div', { class: 'tr-txt' }, d.anlam_tr.join(' • ')) : null,
-      d.baglam_tr ? el('div', { style: 'color:var(--tx-dim);font-size:14px;margin-top:5px' }, '➜ bu cümlede: ' + d.baglam_tr) : null,
-    ) : null,
-    d.erklaerung_de ? block(`Almanca açıklama (${getSettings().level})`,
-      el('div', { class: 'de-txt' }, d.erklaerung_de,
-        el('button', { class: 'mini', style: 'margin-left:8px', onclick: () => speak(d.erklaerung_de) }, '🔊')),
-    ) : null,
-    d.form_erklaerung ? block('Cümledeki hali', el('div', { style: 'font-size:14.5px;color:var(--tx-dim)' }, d.form_erklaerung)) : null,
-    d.synonyme?.length ? block('Eş anlamlıları (yerine kullanabilirsin)',
-      el('div', { class: 'syn' }, ...d.synonyme.map(s =>
-        el('button', { onclick: () => openWord(s.wort, context, source) },
-          el('b', {}, s.wort), el('small', {}, [s.tr, s.hinweis].filter(Boolean).join(' — '))))),
-    ) : null,
-    d.wortfamilie?.length ? block('Kelime ailesi (aynı kökten)',
-      el('div', { class: 'syn fam' }, ...d.wortfamilie.map(f =>
-        el('button', { onclick: () => openWord(f.wort, '', source) },
-          el('span', { class: 'fam-h' }, el('b', {}, f.wort), levelBadge(f.niveau, 'sm')),
-          el('small', {}, [f.tr, f.wortart].filter(Boolean).join(' · '))))),
-      el('p', { class: 'hint', style: 'margin-top:8px' }, 'Bir tanesine dokunursan onu da öğretirim.'),
-    ) : null,
-    d.gegenteil?.length ? block('Zıt anlamlıları',
-      el('div', { class: 'syn' }, ...d.gegenteil.map(s =>
-        el('button', { onclick: () => openWord(s.wort, context, source) }, el('b', {}, s.wort), el('small', {}, s.tr || '')))),
-    ) : null,
-    d.beispiele?.length ? block('Örnek cümleler', ...d.beispiele.map(b =>
-      el('div', { class: 'ex' },
-        el('div', { class: 'de-txt' }, b.de, el('button', { class: 'mini', style: 'margin-left:6px', onclick: () => speak(b.de) }, '🔊')),
-        el('div', { class: 'tr-txt' }, b.tr)),
-    )) : null,
-    d.verb_info && (d.verb_info.praesens_er || d.verb_info.perfekt) ? block('Fiil bilgisi',
-      el('div', { style: 'font-size:14.5px;line-height:1.8' },
-        d.verb_info.praesens_er ? el('div', {}, 'Präsens: ' + d.verb_info.praesens_er) : null,
-        d.verb_info.praeteritum ? el('div', {}, 'Präteritum: ' + d.verb_info.praeteritum) : null,
-        d.verb_info.perfekt ? el('div', {}, 'Perfekt: ' + d.verb_info.perfekt) : null),
-    ) : null,
-    d.tipp ? block('İpucu', el('div', { style: 'font-size:14.5px' }, '💡 ' + d.tipp)) : null,
-    ctxBlock(context, d.wort || word),
-    el('div', { style: 'display:flex;gap:8px;margin-top:16px' },
-      el('button', { class: 'chip', onclick: () => openWord(word, context, source, true) }, '🔄 Yeniden sor'),
-      el('button', { class: 'chip', onclick: closeSheet }, 'Kapat'),
-    ),
-  ];
-  body().replaceChildren(...nodes.filter(Boolean));
+  bar.replaceChildren(
+    saveBtn,
+    el('button', { class: 'act', onclick: () => speak(full) }, el('span', {}, '🔊'), 'Dinle'),
+    el('button', { class: 'act', onclick: () => openWord(word, context, source, true) }, el('span', {}, '🔄'), 'Yenile'),
+    el('button', { class: 'act', onclick: closeSheet }, el('span', {}, '✕'), 'Kapat'),
+  );
+  bar.hidden = false;
 }
 
 /** Bir kelimeyi aç ve yapay zekâdan açıklamasını iste */
@@ -199,7 +275,7 @@ export async function openWord(word, context = '', source = '', force = false) {
     if (current && current.word === word) render(d, word, context, source);
   } catch (e) {
     body().replaceChildren(
-      el('div', { class: 'wh' }, el('div', { class: 'word' }, word)),
+      el('header', { class: 'w-head' }, el('div', { class: 'w-title' }, el('span', { class: 'w-lemma' }, word))),
       errorBox(e, () => openWord(word, context, source, true)),
     );
   }

@@ -56,6 +56,7 @@ const studyEl = () => $('#study');
 
 function closeStudy() {
   studyEl().hidden = true;
+  synOpen = false;
   renderVocab();
   document.dispatchEvent(new CustomEvent('vocab-changed'));
 }
@@ -101,6 +102,10 @@ function draw() {
     el('div', { class: 'tr-big' }, v.tr || '—'),
     v.de ? el('div', { class: 'de-small' }, v.de) : null,
     v.example ? el('div', { class: 'ex-small' }, v.example) : null,
+    v.syn?.length ? el('div', { class: 'syn-mini' },
+      el('span', { class: 'syn-mini-h' }, 'yerine:'),
+      ...sortSyn(v.syn).slice(0, 3).map(sy =>
+        el('span', { class: 'syn-pill' }, levelBadge(sy.niveau, 'sm'), sy.wort))) : null,
   );
   const tapHint = el('div', { class: 'tap-hint' + (revealed ? ' off' : '') }, '👆 anlamı görmek için dokun');
 
@@ -150,8 +155,82 @@ function answerButtons(v) {
   ];
 }
 
+/* --------------------------- eş anlamlı turu ------------------------------ */
+const LEVEL_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+const sortSyn = (list) => [...(list || [])].sort((a, b) =>
+  (LEVEL_ORDER[String(a.niveau).toUpperCase()] || 9) - (LEVEL_ORDER[String(b.niveau).toUpperCase()] || 9));
+
+const withSyn = () => allVocab().filter(v => Array.isArray(v.syn) && v.syn.length);
+
+let synQueue = [], synIdx = 0, synOpen = false;
+
+export function startSynRound() {
+  const pool = withSyn();
+  if (!pool.length) {
+    return toast('Önce birkaç kelime kaydet — eş anlamlıları da onlarla birlikte kaydediliyor.');
+  }
+  synQueue = pool.sort(() => Math.random() - 0.5).slice(0, 8);
+  synIdx = 0; synOpen = true;
+  studyEl().hidden = false;
+  drawSyn();
+}
+
+function drawSyn() {
+  if (synIdx >= synQueue.length) {
+    synOpen = false;
+    $('#study-count').textContent = '';
+    $('#study-prog-bar').style.width = '100%';
+    return $('#study-body').replaceChildren(el('div', { class: 'study-done' },
+      el('div', { class: 'big' }, '🔁'),
+      el('h2', {}, 'Eş anlamlı turu bitti'),
+      el('p', {}, `${synQueue.length} kelimenin eş anlamlılarını gözden geçirdin.`),
+      el('div', { style: 'display:flex;gap:8px;margin-top:16px;width:100%' },
+        el('button', { class: 'btn primary grow', onclick: startSynRound }, 'Bir tur daha'),
+        el('button', { class: 'btn grow', onclick: closeStudy }, 'Bitir'))));
+  }
+  const v = synQueue[synIdx];
+  const front = (v.artikel ? v.artikel + ' ' : '') + (v.lemma || v.word);
+  let open = false;
+
+  $('#study-count').textContent = `${synIdx + 1} / ${synQueue.length}`;
+  $('#study-prog-bar').style.width = `${(synIdx / synQueue.length) * 100}%`;
+
+  const list = el('div', { class: 'reveal syn-reveal' },
+    ...sortSyn(v.syn).map(sy => el('div', { class: 'syn-line' },
+      levelBadge(sy.niveau, 'sm') || el('span', { class: 'cefr sm ghost' }, '–'),
+      el('span', {}, el('b', {}, sy.wort), sy.tr ? el('small', {}, ' — ' + sy.tr) : null),
+      el('button', { class: 'mini', onclick: (e) => { e.stopPropagation(); speak(sy.wort); } }, '🔊'))));
+  const hint = el('div', { class: 'tap-hint' }, '👆 cevabı görmek için dokun');
+  const reveal = () => {
+    if (open) return;
+    open = true;
+    list.classList.add('on'); hint.classList.add('off');
+    $('#study-actions').replaceChildren(
+      el('button', { class: 'btn primary grow', onclick: () => { synIdx++; bumpStat('reviews'); drawSyn(); } }, 'Sonraki ›'));
+  };
+  list.addEventListener('click', reveal);
+  hint.addEventListener('click', reveal);
+
+  $('#study-body').replaceChildren(
+    el('div', { class: 'study-card' },
+      el('div', { class: 'lvl' }, '🔁 bunun yerine ne diyebilirsin?'),
+      el('div', { class: 'front' }, front,
+        el('button', { class: 'mini', style: 'margin-left:10px', onclick: (e) => { e.stopPropagation(); speak(front); } }, '🔊')),
+      v.tr ? el('div', { class: 'tags', style: 'justify-content:center;margin-top:8px' },
+        el('span', { class: 'tag' }, v.tr)) : null,
+      list, hint),
+    el('div', { class: 'study-actions', id: 'study-actions' },
+      el('button', { class: 'btn primary grow', onclick: reveal }, 'Cevabı göster')),
+    el('button', {
+      class: 'chip', style: 'margin:14px auto 0;display:block',
+      onclick: () => openWord(v.lemma || v.word, v.context || '', v.source || ''),
+    }, 'ℹ️ Bu kelime hakkında detay'),
+  );
+}
+
 /* -------------------------------- kurulum --------------------------------- */
 export function initVocab() {
+  $('#btn-syn-round').addEventListener('click', startSynRound);
   $('#vocab-search').addEventListener('input', (e) => { filter = e.target.value; renderVocab(); });
   $('#btn-flash').addEventListener('click', startStudy);
   $('#study-close').addEventListener('click', closeStudy);

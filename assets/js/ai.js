@@ -141,7 +141,7 @@ const WORD_SCHEMA = `{
   "erklaerung_de": "Kelimenin anlamının BASİT ALMANCA açıklaması (1-2 kısa cümle)",
   "anlam_tr": ["en yaygın Türkçe karşılıklar, 1-4 tane"],
   "baglam_tr": "Bu cümlede tam olarak ne anlama geldiği — TÜRKÇE, tek cümle",
-  "synonyme": [{"wort":"Almanca eş anlamlı", "tr":"Türkçesi", "hinweis":"kullanım farkı — TÜRKÇE, kısa"}],
+  "synonyme": [{"wort":"Almanca eş anlamlı", "tr":"Türkçesi", "niveau":"A1…C2", "hinweis":"kullanım farkı — TÜRKÇE, kısa"}],
   "gegenteil": [{"wort":"Almanca zıt anlamlı", "tr":"Türkçesi"}],
   "beispiele": [{"de":"basit Almanca örnek cümle", "tr":"Türkçe çevirisi"}],
   "verb_info": {"praesens_er":"er/sie/es çekimi", "praeteritum":"", "perfekt":"haben/sein + partizip", "trennbar": true, "kasus":"aldığı hal/edat (varsa)"},
@@ -151,8 +151,8 @@ const WORD_SCHEMA = `{
 export async function lookupWord(word, context = '', { force = false } = {}) {
   const s = getSettings();
   const ctx = (context || '').slice(0, 400);
-  // v2: şemaya seviye ve kelime ailesi eklendi — eski önbellek girdileri kullanılmasın
-  const key = `w2:${s.model}:${s.level}:${word}:${ctx}`;
+  // v3: eş anlamlılara seviye alanı eklendi — eski önbellek girdileri kullanılmasın
+  const key = `w3:${s.model}:${s.level}:${word}:${ctx}`;
   if (!force) {
     const c = cacheGet(key);
     if (c) return { ...c, _cached: true };
@@ -169,7 +169,10 @@ Kurallar:
 - "wortfamilie" alanına AYNI KÖKTEN türeyen 3-6 kelime yaz: fiilin isim hâli, isimden türeyen
   sıfat, ön ekli fiiller (an-, auf-, aus-, ver-, be-…), yaygın bileşik isimler.
   Sadece gerçekten aynı kökten gelenleri yaz; yoksa listeyi boş bırak. İsimleri artikelle yaz.
-- "synonyme" alanına Almanların bu kelimenin yerine gerçekten kullandığı 2-4 kelime yaz.
+- "synonyme" alanına Almanların bu kelimenin yerine gerçekten kullandığı 3-5 kelime yaz ve
+  bunları FARKLI SEVİYELERDEN seç: mümkünse en az bir tane basit/günlük (A1-A2), bir tane orta (B1),
+  bir tane daha ileri veya resmi (B2-C1). Her biri için "niveau" alanını doldur.
+  Aynı seviyeden birden fazla yazma; o seviyede uygun kelime yoksa o seviyeyi atla.
 - "beispiele" alanına 2-3 örnek cümle yaz; biri mümkünse verilen bağlama benzesin.
 - Kelime fiil değilse "verb_info" null olsun.
 - Kelime bir ayrılabilir fiilin parçası ya da deyim ise bunu "form_erklaerung" içinde belirt.`;

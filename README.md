@@ -8,7 +8,9 @@ Metindeki **herhangi bir kelimeye dokunduğunda** yapay zeka o kelimeyi sana ö�
 - Kelimenin **seviyesi** (A1…C2 rozeti) ve günlük Almancada ne sıklıkta geçtiği
 - Kelimenin **basit Almanca açıklaması** (seviyene göre — `Das Wetter sagt, ob es warm oder kalt ist.`)
 - **Türkçe karşılıkları** ve o cümledeki anlamı
-- Almanların gerçekten kullandığı **eş anlamlı kelimeler** (Türkçeleri ve aralarındaki farkla)
+- **Her seviyeden eş anlamlılar**: aynı anlama gelen kelimeler A1'den C1'e doğru sıralı
+  (`laufen` → `gehen` A1 · `rennen` A2 · `joggen` B1 · `sich fortbewegen` C1), her birinin
+  Türkçesi ve kullanım farkıyla — kendi seviyene uygun olanı seçebilirsin
 - **Kelime ailesi**: aynı kökten türeyen kelimeler (`laufen` → `der Lauf`, `der Läufer`,
   `weglaufen`, `die Laufbahn`), her biri Türkçesi ve seviyesiyle — dokununca o kelime de açılır
 - Zıt anlamlılar
@@ -80,6 +82,9 @@ altta ilerleme çubuğu.
   Dokununca netleşir, sonra **😕 Bilmiyorum / 🙂 Biliyorum** dersin.
 - **ℹ️ Bu kelime hakkında detay** ile tam açıklama panelini (eş anlamlılar, örnek
   cümleler, fiil çekimleri) çalışma sırasında da açabilirsin.
+- Kartın açılan yüzünde kelimenin **eş anlamlıları** da seviyeleriyle görünür.
+- **🔁 Eş anlamlı turu**: kelime gösterilir, "bunun yerine ne diyebilirsin?" diye sorulur;
+  dokununca eş anlamlıları basitten ileriye doğru açılır. Bu tur tekrar takvimini etkilemez.
 - Aralıklı tekrar (Leitner): bildiğin kelime **1 → 3 → 7 → 16 → 35 → 90 gün** sonra
   tekrar karşına çıkar; bilemediğin başa döner ve **aynı turda** tekrar sorulur.
   Böylece kelimeyi unutmadan hemen önce tekrar görürsün.
