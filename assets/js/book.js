@@ -9,7 +9,7 @@ import { setReading } from './stats.js';
 const PDFJS_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs';
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs';
 const JSZIP_URL = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
-const MAX_BLOCKS = 60;   // bir bölüm en fazla bu kadar paragraf tutar (akıcı sayfalama için)
+const MAX_BLOCKS = 24;   // bir bölüm en fazla bu kadar paragraf tutar (akıcı sayfalama için)
 const GAP = 32;
 
 let book = null;         // {id,name,type,chapters:[{title,blocks}],pos}
@@ -204,12 +204,9 @@ function measurePages() {
   pages = Math.max(1, Math.ceil((maxRight - 1) / pageW));
 }
 
-function showPage(i, animate = true) {
-  const flow = flowEl();
+function showPage(i) {
   page = Math.max(0, Math.min(i, pages - 1));
-  if (!animate) flow.classList.add('no-anim');
-  flow.style.transform = `translateX(${-page * pageW}px)`;
-  if (!animate) requestAnimationFrame(() => flow.classList.remove('no-anim'));
+  flowEl().style.transform = `translateX(${-page * pageW}px)`;
   updateChrome();
   markProgress();
   savePos();
@@ -275,7 +272,7 @@ export function applyReaderStyle(repaginate = false) {
     const ratio = pages > 1 ? page / (pages - 1) : 0;
     requestAnimationFrame(() => {
       measurePages();
-      showPage(Math.round(ratio * (pages - 1)), false);
+      showPage(Math.round(ratio * (pages - 1)));
     });
   }
 }
@@ -297,7 +294,6 @@ function renderChapter(idx, toPage = 0) {
   nodes.push(el('p', { class: 'chapter-tail' }, chapter >= book.chapters.length - 1 ? '· son ·' : '· · ·'));
 
   const flow = flowEl();
-  flow.classList.add('no-anim');
   flow.style.transform = 'none';
   flow.replaceChildren(...nodes);
   flow.scrollTop = 0;
@@ -307,7 +303,7 @@ function renderChapter(idx, toPage = 0) {
   wantPage = target;
   clearTimeout(wantT);
   wantT = setTimeout(() => { wantPage = null; }, 1500);
-  showPage(target, false);
+  showPage(target);
 }
 
 let saveT = null;
@@ -332,8 +328,32 @@ function contextOf(spanEl) {
   return sentenceAround(full, idx) || full.slice(0, 300);
 }
 
+/** Daha önce büyük parçalar hâlinde kaydedilmiş kitapları yeni sınıra göre böler
+    (eski kayıtlar da hızlansın diye) ve kaldığın yeri yeni bölümlere taşır. */
+function resplit(b) {
+  if (!b.chapters?.some(c => c.blocks.length > MAX_BLOCKS)) return b;
+  const offsetOf = (idx) => b.chapters.slice(0, Math.max(0, idx)).reduce((a, c) => a + c.blocks.length, 0);
+  const chapters = splitLong(b.chapters);
+  const mapIdx = (offset) => {
+    let acc = 0;
+    for (let i = 0; i < chapters.length; i++) {
+      acc += chapters[i].blocks.length;
+      if (offset < acc) return i;
+    }
+    return chapters.length - 1;
+  };
+  const next = {
+    ...b, chapters,
+    pos: { chapter: mapIdx(offsetOf(b.pos?.chapter || 0)), page: 0 },
+    maxPos: b.maxPos ? { chapter: mapIdx(offsetOf(b.maxPos.chapter)), page: 0 } : undefined,
+  };
+  putBook({ ...next, opened: Date.now() }).catch(() => {});
+  return next;
+}
+
 function useBook(b) {
-  book = b;
+  book = resplit(b);
+  b = book;
   $('#book-empty').hidden = true;
   paperEl().classList.add('on');
   $('#running-head').hidden = false;
@@ -357,7 +377,7 @@ function relayout() {
   const ratio = pages > 1 ? page / (pages - 1) : 0;
   const target = wantPage;
   measurePages();
-  showPage(target !== null ? target : Math.round(ratio * (pages - 1)), false);
+  showPage(target !== null ? target : Math.round(ratio * (pages - 1)));
 }
 
 /* -------------------------------- dosya aç -------------------------------- */

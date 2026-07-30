@@ -117,6 +117,10 @@ Sayaçların nasıl çalıştığı:
 - Tamamen istemci tarafında çalışır; sunucu, veritabanı, derleme adımı yok. Statik dosyalar yeter.
 - Sayfalama CSS çoklu sütun (`column-width`) ile yapılır: bölüm ekran boyu sütunlara akıtılır,
   sayfa çevirmek sütunları yatay kaydırmaktır. Ekran döndüğünde/punto değişince yeniden ölçülür.
+- Akıcılık için sayfa değişimi **anında**dır: bir bölüm onlarca ekran genişliğinde olabildiği
+  için `transform` animasyonu + `will-change` telefonda dev bir compositor katmanı yaratıp
+  gecikmeye yol açıyordu. Bölümler en fazla 24 paragrafa bölünür ve dokunulabilir öğelerde
+  `touch-action: manipulation` ile çift dokunuş beklemesi kaldırılmıştır.
 - PDF için `pdf.js`, EPUB için `JSZip` CDN'den yüklenir.
 - Yapay zeka yanıtları cihazda önbelleğe alınır — aynı kelimeye tekrar dokunmak ücretsizdir.
 

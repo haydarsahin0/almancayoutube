@@ -28,7 +28,9 @@ body{
   overscroll-behavior:none;
 }
 button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
+button{cursor:pointer;touch-action:manipulation}
+/* çift dokunuş beklemesi olmasın: dokunuş anında işlensin */
+.w,.paper,.tab,.act,.chip,.opt,.nav-btn,.mini,.syn-row,.fam-card,.toc-row,.bar-col{touch-action:manipulation}
 a{color:var(--blue)}
 
 /* ---------- üst bar ---------- */
@@ -91,7 +93,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
   font-size:var(--reader-size);
   line-height:var(--reader-lh);
   hyphens:auto;-webkit-hyphens:auto;
-  overflow:hidden;
+  overflow:hidden;contain:paint;
   user-select:text;-webkit-user-select:text;
   -webkit-tap-highlight-color:transparent;
 }
@@ -122,14 +124,14 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
   font-size:11px;letter-spacing:.14em;color:var(--ink-dim);
 }
 
-/* sütunlara akan metin = sayfalar */
+/* sütunlara akan metin = sayfalar
+   Sayfa değişimi ANINDA olur: bir bölüm onlarca ekran genişliğinde olabildiği için
+   transform animasyonu ve will-change dev bir compositor katmanı yaratıp telefonu
+   yavaşlatıyordu. Kaydırma yok → dokunuş ile sayfa arasında gecikme yok. */
 .flow{
   flex:1;min-height:0;position:relative;
   column-fill:auto;column-gap:var(--col-gap,32px);
-  transition:transform .22s cubic-bezier(.22,.61,.36,1);
-  will-change:transform;
 }
-.flow.no-anim{transition:none}
 .flow>*{break-inside:avoid-column}
 .flow>p{break-inside:auto}
 .flow>*:first-child{margin-top:0}
@@ -180,7 +182,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 .nav-btn:active{background:var(--bg-3)}
 .nav-btn:disabled{opacity:.3}
 .book-progress{flex:none;height:3px;background:var(--bg-3)}
-.book-progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.book-progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .12s linear}
 
 /* boş ekran */
 .empty-state{
@@ -305,7 +307,7 @@ textarea{min-height:120px;line-height:1.5}
 }
 .study-top{flex:none;display:flex;align-items:center;gap:10px;padding:6px 8px}
 .study-prog{flex:1;height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden}
-.study-prog span{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+.study-prog span{display:block;height:100%;width:0;background:var(--accent);transition:width .15s linear}
 .study-count{font-size:12px;color:var(--tx-dim);min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
 .study-body{
   flex:1;min-height:0;overflow-y:auto;
@@ -322,7 +324,7 @@ textarea{min-height:120px;line-height:1.5}
 .reveal{
   margin-top:20px;padding-top:18px;border-top:1px solid var(--line);
   filter:blur(9px);opacity:.85;cursor:pointer;
-  transition:filter .28s ease,opacity .28s ease;
+  transition:filter .16s ease,opacity .16s ease;
   user-select:none;
 }
 .reveal.on{filter:none;opacity:1;cursor:auto;user-select:text}
@@ -365,9 +367,9 @@ textarea{min-height:120px;line-height:1.5}
   background:var(--bg-2);border-top:1px solid var(--line);
   border-radius:20px 20px 0 0;
   max-height:92dvh;display:flex;flex-direction:column;
-  animation:up .22s ease-out;
+  animation:up .13s ease-out;
 }
-@keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes up{from{transform:translateY(14px);opacity:.6}to{transform:none;opacity:1}}
 .sheet-handle{padding:8px 0 2px;display:flex;justify-content:center;flex:none}
 .sheet-handle span{width:44px;height:5px;border-radius:3px;background:var(--line);display:block}
 .sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 14px 18px}
