@@ -1,7 +1,7 @@
 // Kelime defteri + aralıklı tekrar çalışması
 import { $, el, speak, toast } from './util.js';
 import { allVocab, removeWord, importVocab, bumpStat } from './store.js';
-import { openWord } from './word.js';
+import { openWord, levelBadge } from './word.js';
 import { dueQueue, dueCount, answer as srsAnswer, levelOf, dueText, normalize, nextDueAt } from './srs.js';
 
 let filter = '';
@@ -33,7 +33,8 @@ export function renderVocab() {
     const lv = levelOf(v);
     return el('div', { class: 'vrow' },
       el('div', { class: 'main' },
-        el('div', { class: 'de' }, (v.artikel ? v.artikel + ' ' : '') + (v.lemma || v.word)),
+        el('div', { class: 'de' }, (v.artikel ? v.artikel + ' ' : '') + (v.lemma || v.word),
+          levelBadge(v.niveau, 'sm')),
         el('div', { class: 'tr' }, v.tr || ''),
         el('div', { class: 'src' },
           el('span', { class: 'sw', style: `background:${lv.color}` }),
@@ -119,7 +120,8 @@ function draw() {
         v.reps ? ` · ${v.reps}. tekrar` : ' · ilk kez'),
       el('div', { class: 'front' }, front,
         el('button', { class: 'mini', style: 'margin-left:10px', onclick: (e) => { e.stopPropagation(); speak(front); } }, '🔊')),
-      v.wortart ? el('div', { class: 'tag' }, v.wortart) : null,
+      el('div', { class: 'tags', style: 'justify-content:center;margin-top:10px' },
+        levelBadge(v.niveau), v.wortart ? el('span', { class: 'tag' }, v.wortart) : null),
       back, tapHint,
     ),
     el('div', { class: 'study-actions', id: 'study-actions' },

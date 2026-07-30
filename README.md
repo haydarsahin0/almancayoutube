@@ -5,9 +5,12 @@ Telefon ve tablette çalışan, kurulum gerektirmeyen bir Almanca okuma uygulama
 PDF, EPUB veya TXT dosyası yüklersin; kitap **gerçek bir kitap gibi sayfa sayfa** açılır.
 Metindeki **herhangi bir kelimeye dokunduğunda** yapay zeka o kelimeyi sana öğretir:
 
+- Kelimenin **seviyesi** (A1…C2 rozeti) ve günlük Almancada ne sıklıkta geçtiği
 - Kelimenin **basit Almanca açıklaması** (seviyene göre — `Das Wetter sagt, ob es warm oder kalt ist.`)
 - **Türkçe karşılıkları** ve o cümledeki anlamı
 - Almanların gerçekten kullandığı **eş anlamlı kelimeler** (Türkçeleri ve aralarındaki farkla)
+- **Kelime ailesi**: aynı kökten türeyen kelimeler (`laufen` → `der Lauf`, `der Läufer`,
+  `weglaufen`, `die Laufbahn`), her biri Türkçesi ve seviyesiyle — dokununca o kelime de açılır
 - Zıt anlamlılar
 - **Örnek cümleler** (Almanca + Türkçe çevirisi)
 - İsimlerde artikel/çoğul, fiillerde Präsens / Präteritum / Perfekt bilgisi
@@ -80,8 +83,8 @@ altta ilerleme çubuğu.
 - Aralıklı tekrar (Leitner): bildiğin kelime **1 → 3 → 7 → 16 → 35 → 90 gün** sonra
   tekrar karşına çıkar; bilemediğin başa döner ve **aynı turda** tekrar sorulur.
   Böylece kelimeyi unutmadan hemen önce tekrar görürsün.
-- Liste her kelimenin seviyesini (Yeni / Öğreniliyor / Biliniyor / Ustalaşıldı) ve
-  bir sonraki tekrar zamanını gösterir; sıralamayı değiştirebilirsin.
+- Liste her kelimenin öğrenme durumunu (Yeni / Öğreniliyor / Biliniyor / Ustalaşıldı),
+  dil seviyesini (A1…C2) ve bir sonraki tekrar zamanını gösterir; sıralamayı değiştirebilirsin.
 - **⬇️ Dışa aktar / ⬆️ İçe aktar** ile kelime listeni yedekleyebilirsin.
 
 ### İstatistik

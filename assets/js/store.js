@@ -60,7 +60,7 @@ export function saveWord(entry) {
   const i = vocab.findIndex(v => normWord(v.lemma || v.word) === k);
   const rec = {
     word: entry.word, lemma: entry.lemma || entry.word,
-    artikel: entry.artikel || '', wortart: entry.wortart || '',
+    artikel: entry.artikel || '', wortart: entry.wortart || '', niveau: entry.niveau || '',
     tr: entry.tr || '', de: entry.de || '', example: entry.example || '',
     source: entry.source || '', context: entry.context || '',
     added: i >= 0 ? vocab[i].added : Date.now(),

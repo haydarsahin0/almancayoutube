@@ -83,6 +83,14 @@ function ctxBlock(context, word) {
   return el('div', {}, wrap, btn);
 }
 
+/** A1…C2 rozeti — seviye metni her zaman yazılı, renk yalnızca destek */
+export function levelBadge(niveau, extraClass = '') {
+  const lv = String(niveau || '').toUpperCase().trim();
+  if (!/^[ABC][12]$/.test(lv)) return null;
+  const band = lv[0] === 'A' ? 'a' : lv[0] === 'B' ? 'b' : 'c';
+  return el('span', { class: `cefr cefr-${band} ${extraClass}`.trim(), title: `Kelime seviyesi: ${lv}` }, lv);
+}
+
 function block(title, ...kids) {
   if (!kids.filter(Boolean).length) return null;
   return el('div', { class: 'blk' }, el('h4', {}, title), ...kids.filter(Boolean));
@@ -101,7 +109,7 @@ function render(d, word, context, source) {
     if (findVocab(lemma)) { removeWord(lemma); saveBtn.textContent = '☆'; toast('Kelime defterinden çıkarıldı'); }
     else {
       saveWord({
-        word, lemma, artikel, wortart: d.wortart || '',
+        word, lemma, artikel, wortart: d.wortart || '', niveau: d.niveau || '',
         tr: (d.anlam_tr || []).join(', '),
         de: d.erklaerung_de || '',
         example: d.beispiele?.[0] ? `${d.beispiele[0].de} — ${d.beispiele[0].tr}` : '',
@@ -124,8 +132,10 @@ function render(d, word, context, source) {
       el('div', { class: 'acts' }, speakBtn, saveBtn),
     ),
     el('div', { class: 'tags' },
+      levelBadge(d.niveau),
       d.wortart ? el('span', { class: 'tag hi' }, d.wortart) : null,
       d.plural ? el('span', { class: 'tag' }, 'çoğul: ' + d.plural) : null,
+      d.haeufigkeit ? el('span', { class: 'tag' }, d.haeufigkeit) : null,
       d.verb_info?.trennbar === true ? el('span', { class: 'tag' }, 'ayrılabilir fiil') : null,
       d.verb_info?.kasus ? el('span', { class: 'tag' }, d.verb_info.kasus) : null,
     ),
@@ -142,6 +152,13 @@ function render(d, word, context, source) {
       el('div', { class: 'syn' }, ...d.synonyme.map(s =>
         el('button', { onclick: () => openWord(s.wort, context, source) },
           el('b', {}, s.wort), el('small', {}, [s.tr, s.hinweis].filter(Boolean).join(' — '))))),
+    ) : null,
+    d.wortfamilie?.length ? block('Kelime ailesi (aynı kökten)',
+      el('div', { class: 'syn fam' }, ...d.wortfamilie.map(f =>
+        el('button', { onclick: () => openWord(f.wort, '', source) },
+          el('span', { class: 'fam-h' }, el('b', {}, f.wort), levelBadge(f.niveau, 'sm')),
+          el('small', {}, [f.tr, f.wortart].filter(Boolean).join(' · '))))),
+      el('p', { class: 'hint', style: 'margin-top:8px' }, 'Bir tanesine dokunursan onu da öğretirim.'),
     ) : null,
     d.gegenteil?.length ? block('Zıt anlamlıları',
       el('div', { class: 'syn' }, ...d.gegenteil.map(s =>

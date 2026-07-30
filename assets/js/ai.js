@@ -134,6 +134,9 @@ const WORD_SCHEMA = `{
   "artikel": "isimse der/die/das, değilse boş string",
   "plural": "isimse çoğul hali, yoksa boş string",
   "wortart": "Nomen | Verb | Adjektiv | Adverb | Präposition | Pronomen | Konjunktion | Partikel | Zahlwort | Redewendung",
+  "niveau": "bu kelimenin Avrupa dil seviyesi: A1 | A2 | B1 | B2 | C1 | C2",
+  "haeufigkeit": "günlük Almancada ne sıklıkta geçer: çok yaygın | yaygın | orta | seyrek",
+  "wortfamilie": [{"wort":"aynı kökten türeyen kelime (artikelli yaz: der Lauf)", "wortart":"Nomen|Verb|Adjektiv…", "tr":"Türkçesi", "niveau":"A1…C2"}],
   "form_erklaerung": "Kelimenin cümledeki hali neden böyle (çekim/hal/zaman) — TÜRKÇE, tek kısa cümle",
   "erklaerung_de": "Kelimenin anlamının BASİT ALMANCA açıklaması (1-2 kısa cümle)",
   "anlam_tr": ["en yaygın Türkçe karşılıklar, 1-4 tane"],
@@ -148,7 +151,8 @@ const WORD_SCHEMA = `{
 export async function lookupWord(word, context = '', { force = false } = {}) {
   const s = getSettings();
   const ctx = (context || '').slice(0, 400);
-  const key = `w:${s.model}:${s.level}:${word}:${ctx}`;
+  // v2: şemaya seviye ve kelime ailesi eklendi — eski önbellek girdileri kullanılmasın
+  const key = `w2:${s.model}:${s.level}:${word}:${ctx}`;
   if (!force) {
     const c = cacheGet(key);
     if (c) return { ...c, _cached: true };
@@ -161,6 +165,10 @@ ${WORD_SCHEMA}
 
 Kurallar:
 - "erklaerung_de" mutlaka ${s.level} seviyesinde basit Almanca olsun.
+- "niveau" alanına kelimenin kendi seviyesini yaz (öğrencinin seviyesini değil).
+- "wortfamilie" alanına AYNI KÖKTEN türeyen 3-6 kelime yaz: fiilin isim hâli, isimden türeyen
+  sıfat, ön ekli fiiller (an-, auf-, aus-, ver-, be-…), yaygın bileşik isimler.
+  Sadece gerçekten aynı kökten gelenleri yaz; yoksa listeyi boş bırak. İsimleri artikelle yaz.
 - "synonyme" alanına Almanların bu kelimenin yerine gerçekten kullandığı 2-4 kelime yaz.
 - "beispiele" alanına 2-3 örnek cümle yaz; biri mümkünse verilen bağlama benzesin.
 - Kelime fiil değilse "verb_info" null olsun.
